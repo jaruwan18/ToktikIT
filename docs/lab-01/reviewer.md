@@ -1,7 +1,7 @@
 # Lab 1 — Peer Review Record
 
 **Author:** Jaruwan — GitHub: @jaruwan18  
-**Peer reviewer:** <partner name> — <student id> — GitHub: @<username>
+**Peer reviewer:** Film — GitHub: @Film26
 
 ## Pull Requests I authored (reviewed by my partner)
 | PR | Branch | Reviewer verdict |
@@ -25,7 +25,7 @@
 |    | feature/1-project-foundation | Approved |
 
 ### My comment:
-> "<ข้อความที่คุณรีวิวให้เพื่อน เช่น: Verified project foundation, client and server builds pass cleanly. Approved.>"
+> "ตรง PR base เหมือนใน Lab sheet จะให้ merge feature branch เข้า lab1-staging ก่อน ลองเปลี่ยนจาก main เป็น lab1-staging ดู ส่วน PostgreSQL เห็นว่า setup Prisma แล้ว แต่ใน Lab sheet มีบอกว่า PostgreSQL ต้อง reachable ด้วย ลองเช็ค connection ว่าต่อได้จริงด้วยนะ"
 
 ### Partner's response:
-> "<ข้อความที่เพื่อนตอบกลับ>"
+> "รับทราบครับ ได้เปลี่ยน base เป็น lab1-staging และเช็ค connection ของ PostgreSQL เรียบร้อยแล้วครับ"
