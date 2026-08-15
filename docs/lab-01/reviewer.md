@@ -17,6 +17,12 @@
 ### How I responded:
 > "ตรวจสอบและยืนยันว่าทำงานอยู่บน branch `feature/1-project-foundation` อย่างถูกต้อง และไม่ได้เขียนโค้ดล้ำหน้าไปยัง Issue 2-4 (Endpoints และ Seeds ยังเป็น Stub), ทำการเพิ่มคำสั่ง `prisma migrate dev` และ `prisma:seed` ลงใน `README.md` และอัปเดตเอกสารใน `docs/lab-01/` ครบทั้ง 3 ไฟล์เรียบร้อยครับ"
 
+### Reviewer comment I received (PR #6 - Issue 2):
+> "เช็ก PR #6 แล้ว มี 2 จุดที่ต้องแก้ก่อน merge: Backend /api/health มี res.status(501) ก่อน 200 ให้เหลือ 200 ตัวเดียว, และ Frontend checkSystem() มี throw new Error ก่อน fetch ให้เอา throw ออกแล้วให้ fetch('/api/health') ทำงาน"
+
+### How I responded:
+> "ได้ทำการตรวจสอบและปรับแก้ทั้ง 2 จุดเรียบร้อยแล้วครับ: ใน server/src/app.ts เหลือเฉพาะ response 200 คืน { status: 'ok', service: 'TokTickIT API' }, ใน client/src/api.ts เอา throw stub ออกและรัน fetch('/api/health') พร้อมตรวจสอบ status === 'ok' และรัน Supertest API-01 ผ่าน 100% เรียบร้อยครับ"
+
 ---
 
 ## Pull Requests I reviewed for my partner
