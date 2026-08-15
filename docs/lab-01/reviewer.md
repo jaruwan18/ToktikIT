@@ -7,7 +7,7 @@
 | PR | Branch | Reviewer verdict |
 |----|--------|------------------|
 | [#5](https://github.com/jaruwan18/ToktikIT/pull/5) | feature/1-project-foundation | Approved |
-| [#6](https://github.com/jaruwan18/ToktikIT/pull/6) | feature/2-health-check | In Review |
+| [#6](https://github.com/jaruwan18/ToktikIT/pull/6) | feature/2-health-check | Approved |
 |    | feature/3-category-seed |  |
 |    | feature/4-category-list |  |
 
@@ -23,10 +23,16 @@
 | PR | Partner's Branch | My verdict |
 |----|------------------|------------|
 |    | feature/1-project-foundation | Approved |
-|    | feature/2-health-check |  |
+|    | feature/2-health-check | Approved |
 
 ### My comment (PR Issue 1):
 > "ตรง PR base เหมือนใน Lab sheet จะให้ merge feature branch เข้า lab1-staging ก่อน ลองเปลี่ยนจาก main เป็น lab1-staging ดู ส่วน PostgreSQL เห็นว่า setup Prisma แล้ว แต่ใน Lab sheet มีบอกว่า PostgreSQL ต้อง reachable ด้วย ลองเช็ค connection ว่าต่อได้จริงด้วยนะ"
 
-### Partner's response:
+### Partner's response (Issue 1):
 > "รับทราบครับ ได้เปลี่ยน base เป็น lab1-staging และเช็ค connection ของ PostgreSQL เรียบร้อยแล้วครับ"
+
+### My comment (PR Issue 2):
+> "คิดว่าโอเคแล้วนะ มีเรียก /api/health จริงแล้วก็แยก success กับ error state ตามที่ 7.2 กำหนดไว้ ลองเช็ค data.status === 'ok' ก่อน set เป็น success ได้นะ เผื่อ API ตอบ 200 แต่ status ไม่ใช่ ok จะได้ไม่เข้า success state"
+
+### Partner's response (Issue 2):
+> "ขอบคุณสำหรับข้อเสนอแนะ ได้เพิ่มการเช็ค data.status === 'ok' ก่อน set success เรียบร้อยแล้วครับ"

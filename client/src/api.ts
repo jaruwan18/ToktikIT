@@ -20,5 +20,9 @@ export async function checkSystem(): Promise<SystemStatus> {
   if (!healthRes.ok) {
     throw new Error("Unable to connect to TokTickIT API");
   }
+  const healthData = await healthRes.json();
+  if (healthData.status !== "ok") {
+    throw new Error("Unable to connect to TokTickIT API");
+  }
   return { online: true, categories: [] };
 }
