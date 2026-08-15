@@ -9,7 +9,7 @@ This project is built with a modern full-stack architecture:
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 toktickit/
@@ -38,7 +38,7 @@ toktickit/
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -75,16 +75,9 @@ Ensure you have the following installed on your system:
    PORT=3000
    ```
 
-4. Database Migration & Prisma Generation:
+4. Initialize Prisma client:
    ```bash
-   # Generate Prisma Client
    npx prisma generate
-
-   # Run Database Migrations (when models are defined in Issue 3)
-   npx prisma migrate dev --name init
-
-   # Seed initial database categories (when seed script is implemented in Issue 3)
-   npm run prisma:seed
    ```
 
 5. Start the backend development server:
@@ -128,7 +121,7 @@ Ensure you have the following installed on your system:
 
 ---
 
-## 🧪 Running Tests
+##  Running Tests
 
 ### Frontend Tests (Vitest)
 ```bash
@@ -144,7 +137,7 @@ npm test
 
 ---
 
-## 🏗️ Production Build
+## Production Build
 
 ### Build Frontend
 ```bash
