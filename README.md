@@ -75,9 +75,16 @@ Ensure you have the following installed on your system:
    PORT=3000
    ```
 
-4. Initialize Prisma client:
+4. Database Migration & Prisma Generation:
    ```bash
+   # Generate Prisma Client
    npx prisma generate
+
+   # Run Database Migrations (when models are defined in Issue 3)
+   npx prisma migrate dev --name init
+
+   # Seed initial database categories (when seed script is implemented in Issue 3)
+   npm run prisma:seed
    ```
 
 5. Start the backend development server:
