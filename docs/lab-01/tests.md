@@ -43,3 +43,29 @@ All test files live under `server/tests/lab-01/` and `client/tests/lab-01/`.
    Start at  22:59:25
    Duration  10.17s (transform 45ms, setup 60ms, collect 91ms, tests 16ms, environment 346ms, prepare 65ms)
 ```
+
+### 3. Database Migration & Seed Idempotency Execution (Issue 3):
+```text
+> toktickit-server@1.0.0 prisma:migrate
+> npx prisma migrate dev --name init
+
+Applying migration `20260816061657_init`
+The following migration(s) have been created and applied from new schema changes:
+migrations/
+  └─ 20260816061657_init/
+    └─ migration.sql
+
+Your database is now in sync with your schema.
+
+# First Seed Run:
+> toktickit-server@1.0.0 prisma:seed
+> tsx prisma/seed.ts
+
+Seeded 4 categories successfully.
+
+# Second Seed Run (Idempotency verification):
+> toktickit-server@1.0.0 prisma:seed
+> tsx prisma/seed.ts
+
+Seeded 4 categories successfully.
+```
