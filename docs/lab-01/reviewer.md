@@ -9,7 +9,7 @@
 | [#5](https://github.com/jaruwan18/ToktikIT/pull/5) | feature/1-project-foundation | Approved |
 | [#6](https://github.com/jaruwan18/ToktikIT/pull/6) | feature/2-health-check | Approved |
 | [#7](https://github.com/jaruwan18/ToktikIT/pull/7) | feature/3-category-seed | Approved |
-|    | feature/4-category-list |  |
+| [#8](https://github.com/jaruwan18/ToktikIT/pull/8) | feature/4-category-list | Approved |
 
 ### Reviewer comment I received (PR #5 - Issue 1):
 > "Required branch ต้องตรงตามโจทย์ feature/1-project-foundation, ไม่ implement เกินขอบเขต Issue 1, เติมคำสั่ง migrate/seed ใน README.md และเติมเอกสารใน docs/lab-01/ ทั้ง 3 ไฟล์"
@@ -29,6 +29,12 @@
 ### How I responded:
 > "ได้ดำเนินการแก้ไขตามข้อเสนอแนะครบทุกจุดเรียบร้อยแล้วครับ: 1) เพิ่มคำสั่ง `npx prisma migrate dev` และ `npm run prisma:seed` ใน `README.md` ให้ผู้ clone ใหม่รัน setup ได้ทันที 2) ลบ comment starter/hint ออกจาก `server/prisma/seed.ts` พร้อม `export const CATEGORIES` 3) ขยายตาราง Prompt เป็น 7 ข้อและเพิ่ม Reflection ชัดเจน 2-3 ประโยคพร้อมระบุจุดที่ปรับแก้การทำงานของ AI ใน `docs/lab-01/ai_use.md` 4) แนบ output บันทึกการรัน migrate และ seed 2 รอบเพื่อพิสูจน์ Idempotency ลงใน `docs/lab-01/tests.md` เรียบร้อยครับ"
 
+### Reviewer comment I received (PR #8 - Issue 4):
+> "issue 4 นี้ทำได้ดีครบตามบรีฟแต่มีจุดต้องลบ 1 จุดคือ ลบ describe.todo() / it.todo() ที่ค้างใน Supertest และ Vitest พร้อมรัน test ใหม่ให้ผ่านทั้งหมด แล้วถึง Merge"
+
+### How I responded:
+> "ตรวจสอบและยืนยันว่าได้ลบ `describe.todo()` และ `it.todo()` ออกทั้งหมดแล้ว และแปลงเป็น test case จริงครบทุกตัว (Supertest `API-01`, `API-02` และ Vitest `UI-01`, `UI-02`, `UI-03`), รันคำสั่ง `npm test` ทั้งฝั่ง client และ server ผ่าน 100% ครบทุก suite โดยไม่มี test ใดถูก skip หรือค้าง todo ครับ"
+
 ---
 
 ## Pull Requests I reviewed for my partner
@@ -37,6 +43,7 @@
 |    | feature/1-project-foundation | Approved |
 |    | feature/2-health-check | Approved |
 |    | feature/3-category-seed | Approved |
+|    | feature/4-category-list | Approved |
 
 ### My comment (PR Issue 1):
 > "ตรง PR base เหมือนใน Lab sheet จะให้ merge feature branch เข้า lab1-staging ก่อน ลองเปลี่ยนจาก main เป็น lab1-staging ดู ส่วน PostgreSQL เห็นว่า setup Prisma แล้ว แต่ใน Lab sheet มีบอกว่า PostgreSQL ต้อง reachable ด้วย ลองเช็ค connection ว่าต่อได้จริงด้วยนะ"
@@ -55,3 +62,9 @@
 
 ### Partner's response (Issue 3):
 > "ขอบคุณครับ ได้ตรวจสอบ migration และ seed บน dev DB เรียบร้อยแล้วครับ"
+
+### My comment (PR Issue 4):
+> "ตรวจสอบ PR Issue 4 แล้ว GET /api/categories ดึงข้อมูลจากฐานข้อมูลจริงตาม order id ถูกต้อง, Frontend แสดงหมวดหมู่และ loading/error state ครบถ้วน, Supertest และ Vitest ผ่านทุกเคสครับ"
+
+### Partner's response (Issue 4):
+> "ขอบคุณครับ ได้ทดสอบทั้ง automated test และ live UI เรียบร้อยแล้วครับ"
