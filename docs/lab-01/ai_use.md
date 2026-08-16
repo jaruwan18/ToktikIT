@@ -12,6 +12,7 @@
 | 5 | Implement Issue 3: define Prisma Category model and run PostgreSQL migration to create table. | Verified schema definition and executed `npx prisma migrate dev --name init` to generate migration files. |
 | 6 | Implement idempotent seed script in `server/prisma/seed.ts` using `prisma.category.upsert()`. | Verified seed execution and ran consecutive seeds to ensure no duplicate rows are created. |
 | 7 | Refine PR description and address peer review feedback: clean boilerplate comments from `seed.ts`, export `CATEGORIES` constant, and add migration/seed steps to `README.md`. | Applied reviewer feedback to ensure codebase cleanliness and updated documentation. |
+| 8 | Implement Issue 4: create `GET /api/categories` endpoint returning categories ordered by id, connect React client to fetch and render categories with loading and error states, and write Supertest (API-02) and Vitest (UI-01, UI-02, UI-03) automated tests. | Verified all Supertest API tests and Vitest UI tests pass with 100% success rate. |
 
 ## Reflection
 Using AI coding agents effectively requires defining strict scope boundaries to prevent premature implementation across sequential Git Flow issues. When configuring the database, I intervened and corrected the agent's connection approach by redirecting to a Docker container on port 5433, avoiding port conflicts with local Windows services. Furthermore, I refined the AI's generated pull request descriptions to remain formal, concise, and aligned with standard software engineering practices.
