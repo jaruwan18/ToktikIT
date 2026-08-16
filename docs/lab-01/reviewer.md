@@ -8,7 +8,7 @@
 |----|--------|------------------|
 | [#5](https://github.com/jaruwan18/ToktikIT/pull/5) | feature/1-project-foundation | Approved |
 | [#6](https://github.com/jaruwan18/ToktikIT/pull/6) | feature/2-health-check | Approved |
-|    | feature/3-category-seed |  |
+| [#7](https://github.com/jaruwan18/ToktikIT/pull/7) | feature/3-category-seed | Approved |
 |    | feature/4-category-list |  |
 
 ### Reviewer comment I received (PR #5 - Issue 1):
@@ -23,6 +23,12 @@
 ### How I responded:
 > "ได้ทำการตรวจสอบและปรับแก้ทั้ง 2 จุดเรียบร้อยแล้วครับ: ใน server/src/app.ts เหลือเฉพาะ response 200 คืน { status: 'ok', service: 'TokTickIT API' }, ใน client/src/api.ts เอา throw stub ออกและรัน fetch('/api/health') พร้อมตรวจสอบ status === 'ok' และรัน Supertest API-01 ผ่าน 100% เรียบร้อยครับ"
 
+### Reviewer comment I received (PR #7 - Issue 3):
+> "ตรวจตาม acceptance criteria ของ Issue 3 แล้ว ผ่านครบ 5 ข้อ ชื่อ branch ถูก scope ไม่ล้ำ Issue 4 ดีมาก แต่มีจุดที่ต้องแก้ดังนี้: README.md — เพิ่มคำสั่ง prisma migrate และ prisma:seed ตอนนี้ clone ไปใหม่จะได้ DB ว่าง, server/prisma/seed.ts บรรทัด 3–6 — comment โจทย์/hint ยังค้าง ลบออกค่ะ, docs/lab-01/ai_use.md — Reflection ต้องมี 2–3 ประโยค + จุดที่แก้/ปฏิเสธ AI และ prompt ต้องมี 6–10 ข้อ (ตอนนี้ 4), เสริม (ไม่บล็อก): export const CATEGORIES เผื่อเทสต์ Issue 4 ใช้ต่อ และแนบ output รัน seed สองรอบใน tests.md มีเท่านี้จ้า"
+
+### How I responded:
+> "ได้ดำเนินการแก้ไขตามข้อเสนอแนะครบทุกจุดเรียบร้อยแล้วครับ: 1) เพิ่มคำสั่ง `npx prisma migrate dev` และ `npm run prisma:seed` ใน `README.md` ให้ผู้ clone ใหม่รัน setup ได้ทันที 2) ลบ comment starter/hint ออกจาก `server/prisma/seed.ts` พร้อม `export const CATEGORIES` 3) ขยายตาราง Prompt เป็น 7 ข้อและเพิ่ม Reflection ชัดเจน 2-3 ประโยคพร้อมระบุจุดที่ปรับแก้การทำงานของ AI ใน `docs/lab-01/ai_use.md` 4) แนบ output บันทึกการรัน migrate และ seed 2 รอบเพื่อพิสูจน์ Idempotency ลงใน `docs/lab-01/tests.md` เรียบร้อยครับ"
+
 ---
 
 ## Pull Requests I reviewed for my partner
@@ -30,6 +36,7 @@
 |----|------------------|------------|
 |    | feature/1-project-foundation | Approved |
 |    | feature/2-health-check | Approved |
+|    | feature/3-category-seed | Approved |
 
 ### My comment (PR Issue 1):
 > "ตรง PR base เหมือนใน Lab sheet จะให้ merge feature branch เข้า lab1-staging ก่อน ลองเปลี่ยนจาก main เป็น lab1-staging ดู ส่วน PostgreSQL เห็นว่า setup Prisma แล้ว แต่ใน Lab sheet มีบอกว่า PostgreSQL ต้อง reachable ด้วย ลองเช็ค connection ว่าต่อได้จริงด้วยนะ"
@@ -42,3 +49,9 @@
 
 ### Partner's response (Issue 2):
 > "ขอบคุณสำหรับข้อเสนอแนะ ได้เพิ่มการเช็ค data.status === 'ok' ก่อน set success เรียบร้อยแล้วครับ"
+
+### My comment (PR Issue 3):
+> "ตรวจสอบ PR Issue 3 ของเพื่อนแล้ว Model Category ถูกต้องตาม schema, migration ทำงานได้สมบูรณ์, seed script ใช้ upsert กัน duplicate เรียบร้อย และไม่มีการ commit secret ใน .env ครับ"
+
+### Partner's response (Issue 3):
+> "ขอบคุณครับ ได้ตรวจสอบ migration และ seed บน dev DB เรียบร้อยแล้วครับ"
