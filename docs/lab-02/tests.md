@@ -71,6 +71,8 @@ Test levels used: Unit, API (Supertest), UI component (Vitest + React Testing Li
 | API-19 | API | AC-14, BR-18 | GET /api/requesters | 200; inactive Requester excluded from list | `server/tests/lab-02/requesters.api.test.ts` | Pending |
 
 | API-20 | API | AC-15 | GET /api/requesters when no active Requesters exist | 200; empty array | `server/tests/lab-02/requesters.api.test.ts` | Pending |
+| API-21 | API | FR-03, Section 6 | GET /api/related-systems | 200; active Related Systems returned in a predictable order | `server/tests/lab-02/reference-data.api.test.ts` | Pending |
+| API-22 | API | Section 0 of api-spec.md | Any Ticket/Attachment endpoint called with missing or invalid requesterId | 400 INVALID_REQUESTER | `server/tests/lab-02/requester-identity.api.test.ts` | Pending |
 
 | UI-01 | UI | AC-02 | Access My Tickets with no Requester selected | Redirects to / renders Requester Selection screen | `client/src/features/tickets/\_\_tests\_\_/MyTickets.test.tsx` | Pending |
 

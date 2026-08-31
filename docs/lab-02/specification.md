@@ -230,3 +230,7 @@ establish the calling identity for ownership checks; a non-matching owner yields
   migration point (BR-21).
 - Duplicate-submission prevention is handled client-side only in Lab 2 (disable-on-submit); a
   server-side idempotency key is out of scope but noted as a future improvement.
+- Ticket Number uniqueness (BR-01) is enforced with a database-level UNIQUE constraint on
+  ticketNumber; if two requests generate a colliding number simultaneously, the backend retries
+  generation up to 3 times before returning a 500 error, rather than relying on generation logic
+  alone to prevent collisions.

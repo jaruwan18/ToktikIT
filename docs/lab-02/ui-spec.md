@@ -305,6 +305,9 @@
 \- Attachment removal success: the item updates in place to the "Removed" muted style without a full page reload.
 
 \- Attachment action failure (e.g., download of an unavailable file): inline error toast/message, not a full-page error.
+- Removed attachments never expose a clickable Download/Preview control in the UI (the button is
+  omitted entirely, not just disabled) — the backend's 410 response is a defensive safety net only,
+  not the primary way removal is communicated to the user.
 
 
 
