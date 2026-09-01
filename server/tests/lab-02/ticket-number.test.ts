@@ -29,8 +29,25 @@ describe("generateTicketNumber", () => {
     expect(result).toBe("TKT-2026-999999");
   });
 
+  it("uses the year from the provided date", () => {
+    const result = generateTicketNumber(
+      1,
+      new Date("2027-01-01T00:00:00Z")
+    );
+
+    expect(result).toBe("TKT-2027-000001");
+  });
+
   it("throws an error for invalid sequence number", () => {
     expect(() => generateTicketNumber(0)).toThrow(
+      "Sequence must be a positive integer."
+    );
+
+    expect(() => generateTicketNumber(-1)).toThrow(
+      "Sequence must be a positive integer."
+    );
+
+    expect(() => generateTicketNumber(1.5)).toThrow(
       "Sequence must be a positive integer."
     );
   });
