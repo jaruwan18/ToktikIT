@@ -23,6 +23,8 @@ describe("POST /api/tickets", () => {
       categoryId: 1,
       relatedSystemId: 1,
       summary: "Cannot access email",
+      description:
+        "I am unable to access my university email account.",
       requestedPriority: "MEDIUM",
       currentStatus: "NEW",
     });
@@ -73,5 +75,68 @@ describe("POST /api/tickets", () => {
     });
 
     expect(response.body.fields).toHaveProperty("summary");
+  });
+
+  it("rejects an invalid description", async () => {
+    const response = await request(app)
+      .post("/api/tickets")
+      .set("X-Requester-Id", "3")
+      .send({
+        categoryId: 1,
+        relatedSystemId: 1,
+        summary: "Cannot access email",
+        description: "Too short",
+        requestedPriority: "MEDIUM",
+      });
+
+    expect(response.status).toBe(400);
+
+    expect(response.body).toMatchObject({
+      error: "VALIDATION_ERROR",
+    });
+
+    expect(response.body.fields).toHaveProperty("description");
+  });
+
+  it("rejects an invalid category", async () => {
+    const response = await request(app)
+      .post("/api/tickets")
+      .set("X-Requester-Id", "3")
+      .send({
+        categoryId: 999999,
+        relatedSystemId: 1,
+        summary: "Cannot access email",
+        description:
+          "I am unable to access my university email account.",
+        requestedPriority: "MEDIUM",
+      });
+
+    expect(response.status).toBe(400);
+
+    expect(response.body).toMatchObject({
+      error: "INVALID_REFERENCE",
+    });
+  });
+
+  it("rejects an invalid requested priority", async () => {
+    const response = await request(app)
+      .post("/api/tickets")
+      .set("X-Requester-Id", "3")
+      .send({
+        categoryId: 1,
+        relatedSystemId: 1,
+        summary: "Cannot access email",
+        description:
+          "I am unable to access my university email account.",
+        requestedPriority: "URGENT",
+      });
+
+    expect(response.status).toBe(400);
+
+    expect(response.body).toMatchObject({
+      error: "VALIDATION_ERROR",
+    });
+
+    expect(response.body.fields).toHaveProperty("requestedPriority");
   });
 });

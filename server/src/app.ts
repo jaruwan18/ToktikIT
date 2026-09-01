@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
+import { Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticketNumber.js";
 
@@ -226,30 +227,84 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
 
     // ---------------------------------------------------------------
     // Generate ticket number
+    // BR-01:
+    // TKT-YYYY-NNNNNN
+    // Sequential per year
+    // Retry up to 3 times if a unique constraint collision occurs
     // ---------------------------------------------------------------
-    const ticketCount = await getPrisma().ticket.count();
+    const prisma = getPrisma();
+    const now = new Date();
 
-    const ticketNumber = generateTicketNumber(ticketCount + 1);
+    const startOfYear = new Date(
+      now.getFullYear(),
+      0,
+      1
+    );
 
-    // ---------------------------------------------------------------
-    // Create ticket
-    // ---------------------------------------------------------------
-    const ticket = await getPrisma().ticket.create({
-      data: {
-        ticketNumber,
-        requesterId,
-        categoryId,
-        relatedSystemId,
-        summary: trimmedSummary,
-        description: trimmedDescription,
-        requestedPriority,
-      },
+    const startOfNextYear = new Date(
+      now.getFullYear() + 1,
+      0,
+      1
+    );
+
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        const ticketCount = await prisma.ticket.count({
+          where: {
+            createdAt: {
+              gte: startOfYear,
+              lt: startOfNextYear,
+            },
+          },
+        });
+
+        const ticketNumber = generateTicketNumber(
+          ticketCount + 1,
+          now
+        );
+
+        // -------------------------------------------------------------
+        // Create ticket
+        // -------------------------------------------------------------
+        const ticket = await prisma.ticket.create({
+          data: {
+            ticketNumber,
+            requesterId,
+            categoryId,
+            relatedSystemId,
+            summary: trimmedSummary,
+            description: trimmedDescription,
+            requestedPriority,
+          },
+        });
+
+        // -------------------------------------------------------------
+        // Success response
+        // -------------------------------------------------------------
+        return res.status(201).json(ticket);
+      } catch (error) {
+        // -------------------------------------------------------------
+        // Retry if Ticket Number conflicts with UNIQUE constraint
+        // -------------------------------------------------------------
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002" &&
+          attempt < MAX_RETRIES - 1
+        ) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    // This point should not normally be reached.
+    return res.status(500).json({
+      error: "INTERNAL_ERROR",
+      message: "Unable to generate a unique ticket number.",
     });
-
-    // ---------------------------------------------------------------
-    // Success response
-    // ---------------------------------------------------------------
-    return res.status(201).json(ticket);
   } catch (error) {
     console.error("Failed to create ticket:", error);
 
