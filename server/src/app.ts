@@ -30,6 +30,32 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch categories" });
   }
 });
+// ---------------------------------------------------------------------------
+// Related Systems
+// ---------------------------------------------------------------------------
+app.get("/api/related-systems", async (_req: Request, res: Response) => {
+  try {
+    const relatedSystems = await getPrisma().relatedSystem.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+
+    res.status(200).json(relatedSystems);
+  } catch {
+    res.status(500).json({
+      error: "INTERNAL_ERROR",
+      message: "Unable to retrieve related systems.",
+    });
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Issue 13 — Development Requester Context
