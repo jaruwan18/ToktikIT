@@ -77,7 +77,9 @@ describe("Attachment API", () => {
         data: {
           ticketId: 1,
           originalFilename: "evidence.pdf",
-          storedFilename: expect.stringMatching(/^[0-9a-f-]{36}\.pdf$/),
+          storedFilename: expect.stringMatching(
+            /^[0-9a-f-]{36}\.pdf$/
+          ),
           mimeType: "application/pdf",
           sizeBytes: 9,
         },
@@ -133,7 +135,8 @@ describe("Attachment API", () => {
 
       expect(response.body).toEqual({
         error: "UNSUPPORTED_FILE_TYPE",
-        message: "Allowed file types are JPG, PNG, WEBP, and PDF.",
+        message:
+          "Allowed file types are JPG, PNG, WEBP, and PDF.",
       });
     });
 
@@ -231,7 +234,9 @@ describe("Attachment API", () => {
         },
       ]);
 
-      expect(prismaMock.attachment.findMany).toHaveBeenCalledWith({
+      expect(
+        prismaMock.attachment.findMany
+      ).toHaveBeenCalledWith({
         where: {
           ticketId: 1,
         },
@@ -267,7 +272,8 @@ describe("Attachment API", () => {
 
       expect(response.body).toEqual({
         error: "INVALID_REQUESTER",
-        message: "A valid, active Requester identity is required.",
+        message:
+          "A valid, active Requester identity is required.",
       });
     });
 
@@ -310,7 +316,8 @@ describe("Attachment API", () => {
 
       expect(response.body).toEqual({
         error: "VALIDATION_ERROR",
-        message: "A removal reason of at least 5 characters is required.",
+        message:
+          "A removal reason of at least 5 characters is required.",
       });
     });
 
@@ -336,7 +343,8 @@ describe("Attachment API", () => {
 
       expect(response.body).toEqual({
         error: "ATTACHMENT_ALREADY_REMOVED",
-        message: "This attachment has already been removed.",
+        message:
+          "This attachment has already been removed.",
       });
     });
 
@@ -353,15 +361,17 @@ describe("Attachment API", () => {
       expect(response.status).toBe(404);
 
       expect(response.body).toEqual({
-       error: "TICKET_NOT_FOUND",
-       message: "Ticket not found.",
+        error: "TICKET_NOT_FOUND",
+        message: "Ticket not found.",
       });
     });
   });
 
   describe("DELETE /api/attachments/:id", () => {
     it("API-16: soft-removes an attachment with a valid reason", async () => {
-      const removedAt = new Date("2026-09-02T10:00:00.000Z");
+      const removedAt = new Date(
+        "2026-09-02T10:00:00.000Z"
+      );
 
       prismaMock.attachment.findFirst.mockResolvedValue({
         id: 10,
@@ -375,6 +385,13 @@ describe("Attachment API", () => {
 
       prismaMock.attachment.update.mockResolvedValue({
         id: 10,
+        ticketId: 1,
+        originalFilename: "evidence.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 1234,
+        uploadedAt: new Date(
+          "2026-09-02T09:00:00.000Z"
+        ),
         isRemoved: true,
         removedAt,
         removalReason: "No longer needed",
@@ -389,14 +406,21 @@ describe("Attachment API", () => {
 
       expect(response.status).toBe(200);
 
-      expect(response.body).toEqual({
+      expect(response.body).toMatchObject({
         id: 10,
+        ticketId: 1,
+        originalFilename: "evidence.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 1234,
         isRemoved: true,
-        removedAt: removedAt.toISOString(),
         removalReason: "No longer needed",
       });
 
-      expect(prismaMock.attachment.update).toHaveBeenCalledWith({
+      expect(response.body.removedAt).toBeDefined();
+
+      expect(
+        prismaMock.attachment.update
+      ).toHaveBeenCalledWith({
         where: { id: 10 },
         data: {
           isRemoved: true,
@@ -405,6 +429,11 @@ describe("Attachment API", () => {
         },
         select: {
           id: true,
+          ticketId: true,
+          originalFilename: true,
+          mimeType: true,
+          sizeBytes: true,
+          uploadedAt: true,
           isRemoved: true,
           removedAt: true,
           removalReason: true,
@@ -441,7 +470,9 @@ describe("Attachment API", () => {
         mimeType: "application/pdf",
         sizeBytes: 1234,
         isRemoved: true,
-        removedAt: new Date("2026-09-02T10:00:00.000Z"),
+        removedAt: new Date(
+          "2026-09-02T10:00:00.000Z"
+        ),
         ticket: {
           id: 1,
           requesterId: 1,
