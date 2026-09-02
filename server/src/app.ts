@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-
 import { Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticketNumber.js";
@@ -598,3 +597,162 @@ app.get("/api/tickets", async (req, res) => {
     });
   }
 });
+
+/**
+ * GET /api/tickets/:id
+ *
+ * Ticket Detail
+ */
+app.get("/api/tickets/:id", async (req, res) => {
+  try {
+    /**
+     * Validate Requester Identity
+     */
+    const requesterId = Number(req.query.requesterId);
+
+    if (
+      !req.query.requesterId ||
+      !Number.isInteger(requesterId) ||
+      requesterId < 1
+    ) {
+      return res.status(400).json({
+        error: "INVALID_REQUESTER",
+        message: "A valid, active Requester identity is required.",
+      });
+    }
+
+    const requester = await getPrisma().requester.findFirst({
+      where: {
+        id: requesterId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!requester) {
+      return res.status(400).json({
+        error: "INVALID_REQUESTER",
+        message: "A valid, active Requester identity is required.",
+      });
+    }
+
+    /**
+     * Validate Ticket ID
+     */
+    const ticketId = Number(req.params.id);
+
+    if (!Number.isInteger(ticketId) || ticketId < 1) {
+      return res.status(404).json({
+        error: "TICKET_NOT_FOUND",
+        message: "Ticket not found.",
+      });
+    }
+
+    /**
+     * Retrieve Ticket Detail
+     *
+     * BR-09:
+     * Ticket must belong to selected requester.
+     */
+    const ticket = await getPrisma().ticket.findFirst({
+      where: {
+        id: ticketId,
+        requesterId,
+      },
+      select: {
+        ticketNumber: true,
+        requesterId: true,
+        categoryId: true,
+        relatedSystemId: true,
+        summary: true,
+        description: true,
+        requestedPriority: true,
+        currentStatus: true,
+        createdAt: true,
+        updatedAt: true,
+
+        requester: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        relatedSystem: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        attachments: {
+          select: {
+            id: true,
+            originalFilename: true,
+            mimeType: true,
+            sizeBytes: true,
+            uploadedAt: true,
+            isRemoved: true,
+            removedAt: true,
+            removalReason: true,
+          },
+          orderBy: {
+            uploadedAt: "asc",
+          },
+        },
+      },
+    });
+
+    /**
+     * Ticket not found / belongs to another requester
+     */
+    if (!ticket) {
+      return res.status(404).json({
+        error: "TICKET_NOT_FOUND",
+        message: "Ticket not found.",
+      });
+    }
+
+    /**
+     * Success response
+     */
+    return res.status(200).json({
+      ticketNumber: ticket.ticketNumber,
+      requesterId: ticket.requesterId,
+      requesterName: ticket.requester.name,
+      categoryId: ticket.categoryId,
+      categoryName: ticket.category.name,
+      relatedSystemId: ticket.relatedSystemId,
+      relatedSystemName: ticket.relatedSystem.name,
+      summary: ticket.summary,
+      description: ticket.description,
+      requestedPriority: ticket.requestedPriority,
+      currentStatus: ticket.currentStatus,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+      attachments: ticket.attachments,
+    });
+  } catch (error) {
+    console.error("Failed to retrieve ticket detail:", error);
+
+    return res.status(500).json({
+      error: "INTERNAL_ERROR",
+      message: "Unable to retrieve ticket.",
+    });
+  }
+});
+
+/**
+ * Export Express app for Supertest
+ */
+export default app;
