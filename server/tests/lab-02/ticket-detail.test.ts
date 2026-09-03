@@ -19,22 +19,20 @@ vi.mock("../../src/prisma", () => ({
   getPrisma: () => prismaMock,
 }));
 
-const mockedPrisma = vi.mocked(prisma);
-
 describe("GET /api/tickets/:id", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockedPrisma.ticket.findFirst.mockResolvedValue(null);
+    prismaMock.ticket.findFirst.mockResolvedValue(null);
   });
 
   it("returns ticket detail for the owning active requester", async () => {
-    mockedPrisma.requester.findFirst.mockResolvedValue({
+    prismaMock.requester.findFirst.mockResolvedValue({
       id: 1,
       name: "Jennifer Anderson",
     });
 
-    mockedPrisma.ticket.findFirst.mockResolvedValue({
+    prismaMock.ticket.findFirst.mockResolvedValue({
       id: 101,
       ticketNumber: "TKT-2026-000101",
       requesterId: 1,
@@ -121,7 +119,7 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns 400 when requester is inactive or does not exist", async () => {
-    mockedPrisma.requester.findFirst.mockResolvedValue(null);
+    prismaMock.requester.findFirst.mockResolvedValue(null);
 
     const response = await request(app)
       .get("/api/tickets/101")
@@ -136,12 +134,12 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns 404 when ticket does not exist", async () => {
-    mockedPrisma.requester.findFirst.mockResolvedValue({
+    prismaMock.requester.findFirst.mockResolvedValue({
       id: 1,
       name: "Jennifer Anderson",
     });
 
-    mockedPrisma.ticket.findFirst.mockResolvedValue(null);
+    prismaMock.ticket.findFirst.mockResolvedValue(null);
 
     const response = await request(app)
       .get("/api/tickets/999")
@@ -156,12 +154,12 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns 404 when ticket belongs to another requester", async () => {
-    mockedPrisma.requester.findFirst.mockResolvedValue({
+    prismaMock.requester.findFirst.mockResolvedValue({
       id: 1,
       name: "Jennifer Anderson",
     });
 
-    mockedPrisma.ticket.findFirst.mockResolvedValue(null);
+    prismaMock.ticket.findFirst.mockResolvedValue(null);
 
     const response = await request(app)
       .get("/api/tickets/101")
@@ -176,12 +174,12 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns an empty attachment list when the ticket has no attachments", async () => {
-    mockedPrisma.requester.findFirst.mockResolvedValue({
+    prismaMock.requester.findFirst.mockResolvedValue({
       id: 1,
       name: "Jennifer Anderson",
     });
 
-    mockedPrisma.ticket.findFirst.mockResolvedValue({
+    prismaMock.ticket.findFirst.mockResolvedValue({
       id: 101,
       ticketNumber: "TKT-2026-000101",
       requesterId: 1,
@@ -217,7 +215,7 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns 500 when the database fails", async () => {
-    mockedPrisma.requester.findFirst.mockRejectedValue(
+    prismaMock.requester.findFirst.mockRejectedValue(
       new Error("Database connection failed"),
     );
 

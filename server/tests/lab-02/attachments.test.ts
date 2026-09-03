@@ -1,14 +1,17 @@
 import request from "supertest";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+
 import app from "../../src/app.js";
 
 const prismaMock = {
   requester: {
     findFirst: vi.fn(),
   },
+
   ticket: {
     findFirst: vi.fn(),
   },
+
   attachment: {
     count: vi.fn(),
     create: vi.fn(),
@@ -203,9 +206,7 @@ describe("Attachment API", () => {
 
       const response = await request(app)
         .get("/api/tickets/1/attachments")
-        .query({
-          requesterId: "1",
-        });
+        .set("X-Requester-Id", "1");
 
       expect(response.status).toBe(200);
 
@@ -264,9 +265,7 @@ describe("Attachment API", () => {
 
       const response = await request(app)
         .get("/api/tickets/1/attachments")
-        .query({
-          requesterId: "999",
-        });
+        .set("X-Requester-Id", "999");
 
       expect(response.status).toBe(400);
 
@@ -282,9 +281,7 @@ describe("Attachment API", () => {
 
       const response = await request(app)
         .get("/api/tickets/999/attachments")
-        .query({
-          requesterId: "1",
-        });
+        .set("X-Requester-Id", "1");
 
       expect(response.status).toBe(404);
 
@@ -361,8 +358,8 @@ describe("Attachment API", () => {
       expect(response.status).toBe(404);
 
       expect(response.body).toEqual({
-        error: "TICKET_NOT_FOUND",
-        message: "Ticket not found.",
+        error: "ATTACHMENT_NOT_FOUND",
+        message: "Attachment not found.",
       });
     });
   });
@@ -421,7 +418,9 @@ describe("Attachment API", () => {
       expect(
         prismaMock.attachment.update
       ).toHaveBeenCalledWith({
-        where: { id: 10 },
+        where: {
+          id: 10,
+        },
         data: {
           isRemoved: true,
           removedAt: expect.any(Date),
@@ -454,8 +453,8 @@ describe("Attachment API", () => {
       expect(response.status).toBe(404);
 
       expect(response.body).toEqual({
-        error: "TICKET_NOT_FOUND",
-        message: "Ticket not found.",
+        error: "ATTACHMENT_NOT_FOUND",
+        message: "Attachment not found.",
       });
     });
   });
@@ -481,9 +480,7 @@ describe("Attachment API", () => {
 
       const response = await request(app)
         .get("/api/attachments/10/download")
-        .query({
-          requesterId: "1",
-        });
+        .set("X-Requester-Id", "1");
 
       expect(response.status).toBe(410);
 
