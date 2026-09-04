@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   createTicket,
   getCategories,
   getRelatedSystems,
+  getRequesters,
   getTickets,
   getTicketDetail,
   uploadAttachment,
@@ -10,6 +11,7 @@ import {
   removeAttachment,
   type Category,
   type RelatedSystem,
+  type Requester,
   type TicketListItem,
   type TicketListParams,
   type RequestedPriority,
@@ -68,25 +70,31 @@ interface CreateFormErrors {
 
 export default function App() {
   /*
-   * Lab 2 temporary requester.
+   * Lab 2 temporary requester selector.
    * Authentication is intentionally excluded from this lab.
    */
-  const requesterId = 1;
-  const requesterName = "Jennifer Anderson";
+  const [requesters, setRequesters] = useState<Requester[]>([]);
+  const [requesterId, setRequesterId] = useState<number | null>(null);
+  const [requesterLoading, setRequesterLoading] = useState(true);
+  const [requesterError, setRequesterError] = useState("");
 
   const [screen, setScreen] = useState<Screen>("my-tickets");
 
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
-  const [selectedTicket, setSelectedTicket] = useState<TicketDetail | null>(null);
-  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [selectedTicket, setSelectedTicket] =
+    useState<TicketDetail | null>(null);
+  const [selectedTicketId, setSelectedTicketId] =
+    useState<number | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [attachmentError, setAttachmentError] = useState("");
-  const [removingAttachmentId, setRemovingAttachmentId] = useState<number | null>(null);
+  const [removingAttachmentId, setRemovingAttachmentId] =
+    useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
+  const [relatedSystems, setRelatedSystems] =
+    useState<RelatedSystem[]>([]);
 
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -113,10 +121,21 @@ export default function App() {
     requestedPriority: "",
   });
 
-  const [createErrors, setCreateErrors] = useState<CreateFormErrors>({});
+  const [createErrors, setCreateErrors] =
+    useState<CreateFormErrors>({});
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState("");
-  const [createdTicketNumber, setCreatedTicketNumber] = useState("");
+  const [createdTicketNumber, setCreatedTicketNumber] =
+    useState("");
+
+  const selectedRequester =
+    requesterId === null
+      ? null
+      : requesters.find((requester) => requester.id === requesterId) ??
+        null;
+
+  const requesterName =
+    selectedRequester?.name ?? "No requester selected";
 
   const hasActiveFilters =
     search.trim() !== "" ||
@@ -124,7 +143,82 @@ export default function App() {
     requestedPriority !== "" ||
     currentStatus !== "";
 
+  /*
+   * Load the temporary Lab 2 requester selector.
+   * Only active requesters are available for selection.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRequesters() {
+      setRequesterLoading(true);
+      setRequesterError("");
+
+      try {
+        const response = await getRequesters();
+
+        if (cancelled) {
+          return;
+        }
+
+        const activeRequesters = response.filter(
+          (requester) => requester.isActive,
+        );
+
+        setRequesters(activeRequesters);
+
+        /*
+         * Keep the current requester if it is still active.
+         * Otherwise select the first active requester for the
+         * temporary Lab 2 testing flow.
+         */
+        setRequesterId((currentRequesterId) => {
+          if (
+            currentRequesterId !== null &&
+            activeRequesters.some(
+              (requester) => requester.id === currentRequesterId,
+            )
+          ) {
+            return currentRequesterId;
+          }
+
+          return activeRequesters[0]?.id ?? null;
+        });
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        setRequesters([]);
+        setRequesterId(null);
+        setRequesterError(
+          err instanceof Error
+            ? err.message
+            : "Unable to retrieve requesters.",
+        );
+      } finally {
+        if (!cancelled) {
+          setRequesterLoading(false);
+        }
+      }
+    }
+
+    void loadRequesters();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function loadTickets() {
+    if (requesterId === null) {
+      setTickets([]);
+      setTotalItems(0);
+      setTotalPages(0);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setErrorMessage("");
 
@@ -132,8 +226,11 @@ export default function App() {
       const response = await getTickets({
         requesterId,
         search,
-        categoryId: categoryId ? Number(categoryId) : undefined,
-        requestedPriority: requestedPriority || undefined,
+        categoryId: categoryId
+          ? Number(categoryId)
+          : undefined,
+        requestedPriority:
+          requestedPriority || undefined,
         currentStatus: currentStatus || undefined,
         sortBy,
         sortOrder,
@@ -181,8 +278,12 @@ export default function App() {
     void loadRelatedSystems();
   }, []);
 
+  /*
+   * Reload My Tickets whenever the selected requester or any
+   * list control changes.
+   */
   useEffect(() => {
-    if (screen === "my-tickets") {
+    if (screen === "my-tickets" && requesterId !== null) {
       void loadTickets();
     }
   }, [
@@ -197,7 +298,31 @@ export default function App() {
     page,
   ]);
 
+  /*
+   * Changing requester invalidates old ticket/detail data.
+   * This prevents data from the previous requester remaining
+   * visible while the new requester's data is loading.
+   */
+  useEffect(() => {
+    setTickets([]);
+    setTotalItems(0);
+    setTotalPages(0);
+    setPage(1);
+
+    setSelectedTicket(null);
+    setSelectedTicketId(null);
+    setDetailError("");
+    setAttachmentError("");
+    setSelectedFile(null);
+
+    setErrorMessage("");
+  }, [requesterId]);
+
   async function openTicketDetail(ticketId: number) {
+    if (requesterId === null) {
+      return;
+    }
+
     setDetailLoading(true);
     setDetailError("");
     setSelectedTicket(null);
@@ -207,7 +332,10 @@ export default function App() {
     setScreen("ticket-detail");
 
     try {
-      const ticket = await getTicketDetail(requesterId, ticketId);
+      const ticket = await getTicketDetail(
+        requesterId,
+        ticketId,
+      );
       setSelectedTicket(ticket);
     } catch (err) {
       setDetailError(
@@ -220,6 +348,33 @@ export default function App() {
     }
   }
 
+  function handleRequesterChange(nextRequesterId: string) {
+    const parsedId = Number(nextRequesterId);
+
+    if (!nextRequesterId || Number.isNaN(parsedId)) {
+      setRequesterId(null);
+      return;
+    }
+
+    if (
+      !requesters.some(
+        (requester) => requester.id === parsedId,
+      )
+    ) {
+      return;
+    }
+
+    setRequesterId(parsedId);
+    setScreen("my-tickets");
+    setSearch("");
+    setCategoryId("");
+    setRequestedPriority("");
+    setCurrentStatus("");
+    setPage(1);
+    setSortBy("createdAt");
+    setSortOrder("desc");
+  }
+
   function backToMyTickets() {
     setSelectedTicket(null);
     setSelectedTicketId(null);
@@ -230,13 +385,22 @@ export default function App() {
   }
 
   function formatFileSize(sizeBytes: number) {
-    if (sizeBytes < 1024) return `${sizeBytes} B`;
-    if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
+    if (sizeBytes < 1024) {
+      return `${sizeBytes} B`;
+    }
+
+    if (sizeBytes < 1024 * 1024) {
+      return `${(sizeBytes / 1024).toFixed(1)} KB`;
+    }
+
     return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   async function refreshTicketDetail() {
-    if (selectedTicketId === null) {
+    if (
+      selectedTicketId === null ||
+      requesterId === null
+    ) {
       return;
     }
 
@@ -244,7 +408,10 @@ export default function App() {
     setDetailError("");
 
     try {
-      const ticket = await getTicketDetail(requesterId, selectedTicketId);
+      const ticket = await getTicketDetail(
+        requesterId,
+        selectedTicketId,
+      );
       setSelectedTicket(ticket);
     } catch (err) {
       setDetailError(
@@ -258,7 +425,11 @@ export default function App() {
   }
 
   async function handleAttachmentUpload() {
-    if (selectedTicketId === null || !selectedFile) {
+    if (
+      selectedTicketId === null ||
+      !selectedFile ||
+      requesterId === null
+    ) {
       return;
     }
 
@@ -266,14 +437,22 @@ export default function App() {
     setAttachmentError("");
 
     try {
-      await uploadAttachment(requesterId, selectedTicketId, selectedFile);
+      await uploadAttachment(
+        requesterId,
+        selectedTicketId,
+        selectedFile,
+      );
+
       setSelectedFile(null);
+
       const fileInput = document.getElementById(
         "attachment-file",
       ) as HTMLInputElement | null;
+
       if (fileInput) {
         fileInput.value = "";
       }
+
       await refreshTicketDetail();
     } catch (err) {
       setAttachmentError(
@@ -286,8 +465,14 @@ export default function App() {
     }
   }
 
-  async function handleAttachmentOpen(attachment: TicketAttachment) {
-    if (selectedTicketId === null || attachment.isRemoved) {
+  async function handleAttachmentOpen(
+    attachment: TicketAttachment,
+  ) {
+    if (
+      selectedTicketId === null ||
+      requesterId === null ||
+      attachment.isRemoved
+    ) {
       return;
     }
 
@@ -298,8 +483,14 @@ export default function App() {
         requesterId,
         attachment.id,
       );
+
       const objectUrl = URL.createObjectURL(blob);
-      const openedWindow = window.open(objectUrl, "_blank", "noopener,noreferrer");
+
+      const openedWindow = window.open(
+        objectUrl,
+        "_blank",
+        "noopener,noreferrer",
+      );
 
       if (!openedWindow) {
         const link = document.createElement("a");
@@ -310,7 +501,10 @@ export default function App() {
         link.remove();
       }
 
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      window.setTimeout(
+        () => URL.revokeObjectURL(objectUrl),
+        60_000,
+      );
     } catch (err) {
       setAttachmentError(
         err instanceof Error
@@ -320,13 +514,19 @@ export default function App() {
     }
   }
 
-  async function handleAttachmentRemove(attachment: TicketAttachment) {
-    if (selectedTicketId === null || attachment.isRemoved) {
+  async function handleAttachmentRemove(
+    attachment: TicketAttachment,
+  ) {
+    if (
+      selectedTicketId === null ||
+      requesterId === null ||
+      attachment.isRemoved
+    ) {
       return;
     }
 
     const reason = window.prompt(
-      `Enter a removal reason for \"${attachment.originalFilename}\" (at least 5 characters):`,
+      `Enter a removal reason for "${attachment.originalFilename}" (at least 5 characters):`,
     );
 
     if (reason === null) {
@@ -334,7 +534,9 @@ export default function App() {
     }
 
     if (reason.trim().length < 5) {
-      setAttachmentError("Removal reason must be at least 5 characters.");
+      setAttachmentError(
+        "Removal reason must be at least 5 characters.",
+      );
       return;
     }
 
@@ -342,7 +544,12 @@ export default function App() {
     setAttachmentError("");
 
     try {
-      await removeAttachment(requesterId, attachment.id, reason.trim());
+      await removeAttachment(
+        requesterId,
+        attachment.id,
+        reason.trim(),
+      );
+
       await refreshTicketDetail();
     } catch (err) {
       setAttachmentError(
@@ -449,6 +656,10 @@ export default function App() {
   }
 
   function openCreateTicket() {
+    if (requesterId === null) {
+      return;
+    }
+
     setCreateForm({
       categoryId: "",
       relatedSystemId: "",
@@ -497,15 +708,18 @@ export default function App() {
     }
 
     if (!createForm.relatedSystemId) {
-      errors.relatedSystemId = "Please select a related system.";
+      errors.relatedSystemId =
+        "Please select a related system.";
     }
 
     if (!summary) {
       errors.summary = "Summary is required.";
     } else if (summary.length < 5) {
-      errors.summary = "Summary must be at least 5 characters.";
+      errors.summary =
+        "Summary must be at least 5 characters.";
     } else if (summary.length > 150) {
-      errors.summary = "Summary must not exceed 150 characters.";
+      errors.summary =
+        "Summary must not exceed 150 characters.";
     }
 
     if (!description) {
@@ -519,16 +733,24 @@ export default function App() {
     }
 
     if (!createForm.requestedPriority) {
-      errors.requestedPriority = "Please select a requested priority.";
+      errors.requestedPriority =
+        "Please select a requested priority.";
     }
 
     return errors;
   }
 
   async function handleCreateTicket(
-    event: React.FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    if (requesterId === null) {
+      setCreateError(
+        "Please select an active requester before creating a ticket.",
+      );
+      return;
+    }
 
     const errors = validateCreateForm();
 
@@ -544,7 +766,9 @@ export default function App() {
     try {
       const ticket = await createTicket(requesterId, {
         categoryId: Number(createForm.categoryId),
-        relatedSystemId: Number(createForm.relatedSystemId),
+        relatedSystemId: Number(
+          createForm.relatedSystemId,
+        ),
         summary: createForm.summary.trim(),
         description: createForm.description.trim(),
         requestedPriority:
@@ -580,7 +804,10 @@ export default function App() {
   const firstItem =
     totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
 
-  const lastItem = Math.min(page * pageSize, totalItems);
+  const lastItem = Math.min(
+    page * pageSize,
+    totalItems,
+  );
 
   return (
     <div className="min-vh-100">
@@ -588,8 +815,12 @@ export default function App() {
         <div className="container">
           <div className="d-flex justify-content-between align-items-center gap-3">
             <div>
-              <div className="fw-bold fs-5">TokTickIT</div>
-              <div className="small">IT Service Desk</div>
+              <div className="fw-bold fs-5">
+                TokTickIT
+              </div>
+              <div className="small">
+                IT Service Desk
+              </div>
             </div>
 
             <div className="d-flex align-items-center gap-3">
@@ -597,7 +828,10 @@ export default function App() {
                 <button
                   type="button"
                   className={`header-nav-button ${
-                    screen === "my-tickets" || screen === "ticket-detail" ? "active" : ""
+                    screen === "my-tickets" ||
+                    screen === "ticket-detail"
+                      ? "active"
+                      : ""
                   }`}
                   onClick={openMyTickets}
                 >
@@ -607,19 +841,59 @@ export default function App() {
                 <button
                   type="button"
                   className={`header-nav-button ${
-                    screen === "create-ticket" ? "active" : ""
+                    screen === "create-ticket"
+                      ? "active"
+                      : ""
                   }`}
                   onClick={openCreateTicket}
+                  disabled={
+                    requesterLoading ||
+                    requesterId === null
+                  }
                 >
                   Create Ticket
                 </button>
               </nav>
 
               <div className="small text-end">
-                <div>
-                  Requester: <strong>{requesterName}</strong>
-                </div>
-                <div className="opacity-75">
+                <label
+                  htmlFor="requester-selector"
+                  className="form-label mb-1 text-white"
+                >
+                  Requester
+                </label>
+
+                <select
+                  id="requester-selector"
+                  className="form-select form-select-sm"
+                  value={
+                    requesterId === null
+                      ? ""
+                      : String(requesterId)
+                  }
+                  onChange={(event) =>
+                    handleRequesterChange(
+                      event.target.value,
+                    )
+                  }
+                  disabled={requesterLoading}
+                  aria-label="Select requester"
+                >
+                  <option value="">
+                    Select requester
+                  </option>
+
+                  {requesters.map((requester) => (
+                    <option
+                      key={requester.id}
+                      value={requester.id}
+                    >
+                      {requester.name}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="opacity-75 mt-1">
                   Lab 2 testing requester
                 </div>
               </div>
@@ -629,7 +903,49 @@ export default function App() {
       </header>
 
       <main className="container app-main">
-        {screen === "ticket-detail" ? (
+        {requesterLoading ? (
+          <section className="zen-card shadow-sm">
+            <div className="card-body p-4 text-center text-muted">
+              Loading requesters...
+            </div>
+          </section>
+        ) : requesterError ? (
+          <section
+            className="zen-alert-error rounded p-4"
+            role="alert"
+          >
+            <div className="fw-semibold mb-1">
+              Unable to load requesters
+            </div>
+            <div>{requesterError}</div>
+          </section>
+        ) : requesters.length === 0 ? (
+          <section className="zen-card shadow-sm">
+            <div className="empty-state">
+              <h1 className="h5">
+                No active requesters available
+              </h1>
+
+              <p className="mb-0">
+                There are currently no active requesters
+                available for Lab 2 testing.
+              </p>
+            </div>
+          </section>
+        ) : requesterId === null ? (
+          <section className="zen-card shadow-sm">
+            <div className="empty-state">
+              <h1 className="h5">
+                Select a requester
+              </h1>
+
+              <p className="mb-0">
+                Please select an active requester to view
+                My Tickets or create a ticket.
+              </p>
+            </div>
+          </section>
+        ) : screen === "ticket-detail" ? (
           <section>
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
               <div>
@@ -640,9 +956,14 @@ export default function App() {
                 >
                   ← Back to My Tickets
                 </button>
-                <h1 className="page-title mb-1">Ticket Detail</h1>
+
+                <h1 className="page-title mb-1">
+                  Ticket Detail
+                </h1>
+
                 <p className="page-subtitle mb-0">
-                  View your submitted ticket and attachment information.
+                  View your submitted ticket and attachment
+                  information.
                 </p>
               </div>
             </div>
@@ -653,12 +974,15 @@ export default function App() {
                 role="alert"
               >
                 <span>{detailError}</span>
+
                 <button
                   type="button"
                   className="btn btn-outline-danger btn-sm"
                   onClick={() => {
                     if (selectedTicketId !== null) {
-                      void openTicketDetail(selectedTicketId);
+                      void openTicketDetail(
+                        selectedTicketId,
+                      );
                     }
                   }}
                 >
@@ -677,48 +1001,97 @@ export default function App() {
                   <div className="card-body p-4">
                     <div className="d-flex flex-column flex-sm-row justify-content-between gap-3 mb-4">
                       <div>
-                        <div className="small text-muted mb-1">Ticket Number</div>
-                        <div className="h4 mb-0">{selectedTicket.ticketNumber}</div>
+                        <div className="small text-muted mb-1">
+                          Ticket Number
+                        </div>
+
+                        <div className="h4 mb-0">
+                          {selectedTicket.ticketNumber}
+                        </div>
                       </div>
+
                       <span
                         className={`badge rounded-pill align-self-start ${getStatusBadgeClass(
                           selectedTicket.currentStatus,
                         )}`}
                       >
-                        {getStatusLabel(selectedTicket.currentStatus)}
+                        {getStatusLabel(
+                          selectedTicket.currentStatus,
+                        )}
                       </span>
                     </div>
 
                     <div className="row g-4">
                       <div className="col-12 col-md-6">
-                        <div className="small text-muted mb-1">Category</div>
-                        <div>{selectedTicket.categoryName ?? categories.find(
-                          (category) => category.id === selectedTicket.categoryId,
-                        )?.name ?? "—"}</div>
+                        <div className="small text-muted mb-1">
+                          Category
+                        </div>
+
+                        <div>
+                          {selectedTicket.categoryName ??
+                            categories.find(
+                              (category) =>
+                                category.id ===
+                                selectedTicket.categoryId,
+                            )?.name ??
+                            "—"}
+                        </div>
                       </div>
+
                       <div className="col-12 col-md-6">
-                        <div className="small text-muted mb-1">Related System</div>
-                        <div>{selectedTicket.relatedSystemName ?? relatedSystems.find(
-                          (system) => system.id === selectedTicket.relatedSystemId,
-                        )?.name ?? "—"}</div>
+                        <div className="small text-muted mb-1">
+                          Related System
+                        </div>
+
+                        <div>
+                          {selectedTicket.relatedSystemName ??
+                            relatedSystems.find(
+                              (system) =>
+                                system.id ===
+                                selectedTicket.relatedSystemId,
+                            )?.name ??
+                            "—"}
+                        </div>
                       </div>
+
                       <div className="col-12 col-md-6">
-                        <div className="small text-muted mb-1">Requested Priority</div>
+                        <div className="small text-muted mb-1">
+                          Requested Priority
+                        </div>
+
                         <span
                           className={`badge rounded-pill ${getPriorityBadgeClass(
                             selectedTicket.requestedPriority,
                           )}`}
                         >
-                          {getPriorityLabel(selectedTicket.requestedPriority)}
+                          {getPriorityLabel(
+                            selectedTicket.requestedPriority,
+                          )}
                         </span>
                       </div>
+
                       <div className="col-12 col-md-6">
-                        <div className="small text-muted mb-1">Created</div>
-                        <div>{formatDate(selectedTicket.createdAt)}</div>
+                        <div className="small text-muted mb-1">
+                          Created
+                        </div>
+
+                        <div>
+                          {formatDate(
+                            selectedTicket.createdAt,
+                          )}
+                        </div>
                       </div>
+
                       <div className="col-12">
-                        <div className="small text-muted mb-1">Last Updated</div>
-                        <div>{formatDate(selectedTicket.updatedAt)}</div>
+                        <div className="small text-muted mb-1">
+                          Last Updated
+                        </div>
+
+                        <div>
+                          {formatDate(
+                            selectedTicket.updatedAt,
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -726,14 +1099,28 @@ export default function App() {
 
                 <section className="zen-card shadow-sm mb-4">
                   <div className="card-body p-4">
-                    <h2 className="section-title mb-3">Request Details</h2>
+                    <h2 className="section-title mb-3">
+                      Request Details
+                    </h2>
+
                     <div className="mb-4">
-                      <div className="small text-muted mb-1">Summary</div>
-                      <div className="fw-semibold">{selectedTicket.summary}</div>
+                      <div className="small text-muted mb-1">
+                        Summary
+                      </div>
+
+                      <div className="fw-semibold">
+                        {selectedTicket.summary}
+                      </div>
                     </div>
+
                     <div>
-                      <div className="small text-muted mb-1">Description</div>
-                      <div className="ticket-description">{selectedTicket.description}</div>
+                      <div className="small text-muted mb-1">
+                        Description
+                      </div>
+
+                      <div className="ticket-description">
+                        {selectedTicket.description}
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -742,48 +1129,85 @@ export default function App() {
                   <div className="card-body p-4">
                     <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                       <div>
-                        <h2 className="section-title mb-1">Attachments</h2>
+                        <h2 className="section-title mb-1">
+                          Attachments
+                        </h2>
+
                         <div className="form-helper">
-                          JPG, JPEG, PNG, WEBP, or PDF · maximum 5 MB per file · maximum 5 active files.
+                          JPG, JPEG, PNG, WEBP, or PDF ·
+                          maximum 5 MB per file · maximum 5
+                          active files.
                         </div>
                       </div>
                     </div>
 
                     {attachmentError && (
-                      <div className="zen-alert-error rounded p-3 mb-3" role="alert">
+                      <div
+                        className="zen-alert-error rounded p-3 mb-3"
+                        role="alert"
+                      >
                         {attachmentError}
                       </div>
                     )}
 
                     <div className="border rounded p-3 mb-4">
-                      <label htmlFor="attachment-file" className="form-label">
+                      <label
+                        htmlFor="attachment-file"
+                        className="form-label"
+                      >
                         Add attachment
                       </label>
+
                       <input
                         id="attachment-file"
                         type="file"
                         className="form-control mb-2"
                         accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
-                        disabled={uploadingAttachment || removingAttachmentId !== null}
+                        disabled={
+                          uploadingAttachment ||
+                          removingAttachmentId !== null
+                        }
                         onChange={(event) => {
-                          setSelectedFile(event.target.files?.[0] ?? null);
+                          setSelectedFile(
+                            event.target.files?.[0] ??
+                              null,
+                          );
                           setAttachmentError("");
                         }}
                       />
+
                       {selectedFile && (
                         <div className="small text-muted mb-2">
-                          Selected: <strong>{selectedFile.name}</strong> ({formatFileSize(selectedFile.size)})
+                          Selected:{" "}
+                          <strong>
+                            {selectedFile.name}
+                          </strong>{" "}
+                          (
+                          {formatFileSize(
+                            selectedFile.size,
+                          )}
+                          )
                         </div>
                       )}
+
                       <button
                         type="button"
                         className="btn btn-success"
-                        disabled={!selectedFile || uploadingAttachment || removingAttachmentId !== null}
-                        onClick={() => void handleAttachmentUpload()}
+                        disabled={
+                          !selectedFile ||
+                          uploadingAttachment ||
+                          removingAttachmentId !== null
+                        }
+                        onClick={() =>
+                          void handleAttachmentUpload()
+                        }
                       >
                         {uploadingAttachment ? (
                           <>
-                            <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              aria-hidden="true"
+                            />
                             Uploading...
                           </>
                         ) : (
@@ -792,65 +1216,108 @@ export default function App() {
                       </button>
                     </div>
 
-                    {selectedTicket.attachments && selectedTicket.attachments.length > 0 ? (
+                    {selectedTicket.attachments &&
+                    selectedTicket.attachments.length > 0 ? (
                       <div className="d-flex flex-column gap-2">
-                        {selectedTicket.attachments.map((attachment) => (
-                          <div
-                            key={attachment.id}
-                            className={`border rounded p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 ${
-                              attachment.isRemoved ? "bg-light text-muted" : ""
-                            }`}
-                          >
-                            <div className="min-w-0">
-                              <div
-                                className="fw-medium text-truncate"
-                                title={attachment.originalFilename}
-                              >
-                                {attachment.originalFilename}
+                        {selectedTicket.attachments.map(
+                          (attachment) => (
+                            <div
+                              key={attachment.id}
+                              className={`border rounded p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 ${
+                                attachment.isRemoved
+                                  ? "bg-light text-muted"
+                                  : ""
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div
+                                  className="fw-medium text-truncate"
+                                  title={
+                                    attachment.originalFilename
+                                  }
+                                >
+                                  {
+                                    attachment.originalFilename
+                                  }
+                                </div>
+
+                                <div className="small text-muted">
+                                  {formatFileSize(
+                                    attachment.sizeBytes,
+                                  )}{" "}
+                                  ·{" "}
+                                  {formatDate(
+                                    attachment.uploadedAt,
+                                  )}
+                                </div>
+
+                                {attachment.isRemoved &&
+                                  attachment.removalReason && (
+                                    <div className="small mt-1">
+                                      Removed:{" "}
+                                      {
+                                        attachment.removalReason
+                                      }
+                                    </div>
+                                  )}
                               </div>
-                              <div className="small text-muted">
-                                {formatFileSize(attachment.sizeBytes)} · {formatDate(attachment.uploadedAt)}
-                              </div>
-                              {attachment.isRemoved && attachment.removalReason && (
-                                <div className="small mt-1">
-                                  Removed: {attachment.removalReason}
+
+                              {attachment.isRemoved ? (
+                                <span className="badge rounded-pill status-new align-self-start">
+                                  Removed
+                                </span>
+                              ) : (
+                                <div className="d-flex flex-wrap gap-2 align-items-center">
+                                  <span className="badge rounded-pill status-new">
+                                    Available
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-success btn-sm"
+                                    onClick={() =>
+                                      void handleAttachmentOpen(
+                                        attachment,
+                                      )
+                                    }
+                                    disabled={
+                                      uploadingAttachment ||
+                                      removingAttachmentId !==
+                                        null
+                                    }
+                                  >
+                                    Download / Preview
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-danger btn-sm"
+                                    onClick={() =>
+                                      void handleAttachmentRemove(
+                                        attachment,
+                                      )
+                                    }
+                                    disabled={
+                                      uploadingAttachment ||
+                                      removingAttachmentId !==
+                                        null
+                                    }
+                                  >
+                                    {removingAttachmentId ===
+                                    attachment.id
+                                      ? "Removing..."
+                                      : "Remove"}
+                                  </button>
                                 </div>
                               )}
                             </div>
-
-                            {attachment.isRemoved ? (
-                              <span className="badge rounded-pill status-new align-self-start">
-                                Removed
-                              </span>
-                            ) : (
-                              <div className="d-flex flex-wrap gap-2 align-items-center">
-                                <span className="badge rounded-pill status-new">
-                                  Available
-                                </span>
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-success btn-sm"
-                                  onClick={() => void handleAttachmentOpen(attachment)}
-                                  disabled={uploadingAttachment || removingAttachmentId !== null}
-                                >
-                                  Download / Preview
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-danger btn-sm"
-                                  onClick={() => void handleAttachmentRemove(attachment)}
-                                  disabled={uploadingAttachment || removingAttachmentId !== null}
-                                >
-                                  {removingAttachmentId === attachment.id ? "Removing..." : "Remove"}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          ),
+                        )}
                       </div>
                     ) : (
                       <div className="text-muted">
-                        No attachments have been added to this ticket.
+                        No attachments have been added to this
+                        ticket.
                       </div>
                     )}
                   </div>
@@ -862,7 +1329,10 @@ export default function App() {
           <section>
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
               <div>
-                <h1 className="page-title mb-1">Create Ticket</h1>
+                <h1 className="page-title mb-1">
+                  Create Ticket
+                </h1>
+
                 <p className="page-subtitle mb-0">
                   Submit a request to the IT Service Desk.
                 </p>
@@ -882,21 +1352,27 @@ export default function App() {
               <section className="zen-card shadow-sm">
                 <div className="card-body p-4">
                   <div className="zen-alert-success rounded p-4">
-                    <div className="success-icon mb-2">✓</div>
+                    <div className="success-icon mb-2">
+                      ✓
+                    </div>
 
                     <h2 className="h5 mb-2">
                       Ticket created successfully
                     </h2>
 
                     <p className="mb-2">
-                      Your ticket has been submitted successfully.
+                      Your ticket has been submitted
+                      successfully.
                     </p>
 
                     <div className="ticket-number-success mb-4">
                       <span className="small text-muted d-block">
                         Ticket Number
                       </span>
-                      <strong>{createdTicketNumber}</strong>
+
+                      <strong>
+                        {createdTicketNumber}
+                      </strong>
                     </div>
 
                     <div className="d-flex flex-column flex-sm-row gap-2">
@@ -936,12 +1412,13 @@ export default function App() {
                         className="readonly-field"
                         aria-readonly="true"
                       >
-                        Generated automatically after submission
+                        Generated automatically after
+                        submission
                       </div>
 
                       <div className="form-helper">
-                        The official Ticket Number is generated by
-                        the backend.
+                        The official Ticket Number is
+                        generated by the backend.
                       </div>
                     </div>
 
@@ -952,7 +1429,9 @@ export default function App() {
                           className="form-label"
                         >
                           Category{" "}
-                          <span className="required-mark">*</span>
+                          <span className="required-mark">
+                            *
+                          </span>
                         </label>
 
                         <select
@@ -991,7 +1470,10 @@ export default function App() {
                         </select>
 
                         {createErrors.categoryId && (
-                          <div className="field-error" role="alert">
+                          <div
+                            className="field-error"
+                            role="alert"
+                          >
                             ⚠ {createErrors.categoryId}
                           </div>
                         )}
@@ -1003,7 +1485,9 @@ export default function App() {
                           className="form-label"
                         >
                           Related System{" "}
-                          <span className="required-mark">*</span>
+                          <span className="required-mark">
+                            *
+                          </span>
                         </label>
 
                         <select
@@ -1013,7 +1497,9 @@ export default function App() {
                               ? "is-invalid"
                               : ""
                           }`}
-                          value={createForm.relatedSystemId}
+                          value={
+                            createForm.relatedSystemId
+                          }
                           onChange={(event) =>
                             updateCreateForm(
                               "relatedSystemId",
@@ -1042,8 +1528,14 @@ export default function App() {
                         </select>
 
                         {createErrors.relatedSystemId && (
-                          <div className="field-error" role="alert">
-                            ⚠ {createErrors.relatedSystemId}
+                          <div
+                            className="field-error"
+                            role="alert"
+                          >
+                            ⚠{" "}
+                            {
+                              createErrors.relatedSystemId
+                            }
                           </div>
                         )}
                       </div>
@@ -1054,7 +1546,9 @@ export default function App() {
                           className="form-label"
                         >
                           Requested Priority{" "}
-                          <span className="required-mark">*</span>
+                          <span className="required-mark">
+                            *
+                          </span>
                         </label>
 
                         <select
@@ -1064,7 +1558,9 @@ export default function App() {
                               ? "is-invalid"
                               : ""
                           }`}
-                          value={createForm.requestedPriority}
+                          value={
+                            createForm.requestedPriority
+                          }
                           onChange={(event) =>
                             updateCreateForm(
                               "requestedPriority",
@@ -1081,14 +1577,29 @@ export default function App() {
                           <option value="">
                             Select requested priority
                           </option>
-                          <option value="LOW">Low</option>
-                          <option value="MEDIUM">Medium</option>
-                          <option value="HIGH">High</option>
+
+                          <option value="LOW">
+                            Low
+                          </option>
+
+                          <option value="MEDIUM">
+                            Medium
+                          </option>
+
+                          <option value="HIGH">
+                            High
+                          </option>
                         </select>
 
                         {createErrors.requestedPriority && (
-                          <div className="field-error" role="alert">
-                            ⚠ {createErrors.requestedPriority}
+                          <div
+                            className="field-error"
+                            role="alert"
+                          >
+                            ⚠{" "}
+                            {
+                              createErrors.requestedPriority
+                            }
                           </div>
                         )}
                       </div>
@@ -1108,14 +1619,18 @@ export default function App() {
                         className="form-label"
                       >
                         Summary{" "}
-                        <span className="required-mark">*</span>
+                        <span className="required-mark">
+                          *
+                        </span>
                       </label>
 
                       <input
                         id="create-summary"
                         type="text"
                         className={`form-control ${
-                          createErrors.summary ? "is-invalid" : ""
+                          createErrors.summary
+                            ? "is-invalid"
+                            : ""
                         }`}
                         value={createForm.summary}
                         onChange={(event) =>
@@ -1136,7 +1651,10 @@ export default function App() {
                       />
 
                       {createErrors.summary ? (
-                        <div className="field-error" role="alert">
+                        <div
+                          className="field-error"
+                          role="alert"
+                        >
                           ⚠ {createErrors.summary}
                         </div>
                       ) : (
@@ -1159,7 +1677,9 @@ export default function App() {
                         className="form-label"
                       >
                         Description{" "}
-                        <span className="required-mark">*</span>
+                        <span className="required-mark">
+                          *
+                        </span>
                       </label>
 
                       <textarea
@@ -1189,7 +1709,10 @@ export default function App() {
                       />
 
                       {createErrors.description ? (
-                        <div className="field-error" role="alert">
+                        <div
+                          className="field-error"
+                          role="alert"
+                        >
                           ⚠ {createErrors.description}
                         </div>
                       ) : (
@@ -1216,6 +1739,7 @@ export default function App() {
                     <div className="fw-semibold mb-1">
                       Unable to create ticket
                     </div>
+
                     <div>{createError}</div>
                   </div>
                 )}
@@ -1255,7 +1779,9 @@ export default function App() {
           <section>
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
               <div>
-                <h1 className="page-title mb-1">My Tickets</h1>
+                <h1 className="page-title mb-1">
+                  My Tickets
+                </h1>
 
                 <p className="page-subtitle mb-0">
                   View and manage tickets created by you.
@@ -1416,7 +1942,8 @@ export default function App() {
                   {hasActiveFilters ? (
                     <>
                       <h2 className="h5">
-                        No tickets match your search or filters.
+                        No tickets match your search or
+                        filters.
                       </h2>
 
                       <p className="mb-3">
@@ -1434,7 +1961,9 @@ export default function App() {
                     </>
                   ) : (
                     <>
-                      <h2 className="h5">No tickets yet</h2>
+                      <h2 className="h5">
+                        No tickets yet
+                      </h2>
 
                       <p className="mb-3">
                         You have not created any tickets yet.
@@ -1464,11 +1993,15 @@ export default function App() {
                                 type="button"
                                 className="btn btn-link sort-button p-0"
                                 onClick={() =>
-                                  handleSort("ticketNumber")
+                                  handleSort(
+                                    "ticketNumber",
+                                  )
                                 }
                               >
                                 Ticket No.
-                                {getSortIndicator("ticketNumber")}
+                                {getSortIndicator(
+                                  "ticketNumber",
+                                )}
                               </button>
                             </th>
 
@@ -1481,7 +2014,9 @@ export default function App() {
                                 }
                               >
                                 Created Date
-                                {getSortIndicator("createdAt")}
+                                {getSortIndicator(
+                                  "createdAt",
+                                )}
                               </button>
                             </th>
 
@@ -1494,17 +2029,23 @@ export default function App() {
                                 }
                               >
                                 Summary
-                                {getSortIndicator("summary")}
+                                {getSortIndicator(
+                                  "summary",
+                                )}
                               </button>
                             </th>
 
-                            <th scope="col">Category</th>
+                            <th scope="col">
+                              Category
+                            </th>
 
                             <th scope="col">
                               Requested Priority
                             </th>
 
-                            <th scope="col">Current Status</th>
+                            <th scope="col">
+                              Current Status
+                            </th>
 
                             <th scope="col">
                               <button
@@ -1515,7 +2056,9 @@ export default function App() {
                                 }
                               >
                                 Last Updated
-                                {getSortIndicator("updatedAt")}
+                                {getSortIndicator(
+                                  "updatedAt",
+                                )}
                               </button>
                             </th>
                           </tr>
@@ -1528,19 +2071,27 @@ export default function App() {
                                 <button
                                   type="button"
                                   className="ticket-link"
-                                  onClick={() => void openTicketDetail(ticket.id)}
+                                  onClick={() =>
+                                    void openTicketDetail(
+                                      ticket.id,
+                                    )
+                                  }
                                 >
                                   {ticket.ticketNumber}
                                 </button>
                               </td>
 
                               <td>
-                                {formatDate(ticket.createdAt)}
+                                {formatDate(
+                                  ticket.createdAt,
+                                )}
                               </td>
 
                               <td>{ticket.summary}</td>
 
-                              <td>{ticket.categoryName}</td>
+                              <td>
+                                {ticket.categoryName}
+                              </td>
 
                               <td>
                                 <span
@@ -1567,7 +2118,9 @@ export default function App() {
                               </td>
 
                               <td>
-                                {formatDate(ticket.updatedAt)}
+                                {formatDate(
+                                  ticket.updatedAt,
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -1583,10 +2136,18 @@ export default function App() {
                       <table className="table ticket-table table-hover align-middle mb-0">
                         <thead>
                           <tr>
-                            <th scope="col">Ticket No.</th>
-                            <th scope="col">Summary</th>
-                            <th scope="col">Current Status</th>
-                            <th scope="col">Last Updated</th>
+                            <th scope="col">
+                              Ticket No.
+                            </th>
+                            <th scope="col">
+                              Summary
+                            </th>
+                            <th scope="col">
+                              Current Status
+                            </th>
+                            <th scope="col">
+                              Last Updated
+                            </th>
                           </tr>
                         </thead>
 
@@ -1597,7 +2158,11 @@ export default function App() {
                                 <button
                                   type="button"
                                   className="ticket-link"
-                                  onClick={() => void openTicketDetail(ticket.id)}
+                                  onClick={() =>
+                                    void openTicketDetail(
+                                      ticket.id,
+                                    )
+                                  }
                                 >
                                   {ticket.ticketNumber}
                                 </button>
@@ -1618,7 +2183,9 @@ export default function App() {
                               </td>
 
                               <td>
-                                {formatDate(ticket.updatedAt)}
+                                {formatDate(
+                                  ticket.updatedAt,
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -1642,9 +2209,19 @@ export default function App() {
                                 Ticket No.
                               </div>
 
-                              <strong>
-                                {ticket.ticketNumber}
-                              </strong>
+                              <button
+                                type="button"
+                                className="ticket-link"
+                                onClick={() =>
+                                  void openTicketDetail(
+                                    ticket.id,
+                                  )
+                                }
+                              >
+                                <strong>
+                                  {ticket.ticketNumber}
+                                </strong>
+                              </button>
                             </div>
 
                             <span
@@ -1696,7 +2273,9 @@ export default function App() {
 
                           <div className="small text-muted">
                             Last Updated:{" "}
-                            {formatDate(ticket.updatedAt)}
+                            {formatDate(
+                              ticket.updatedAt,
+                            )}
                           </div>
                         </div>
                       </article>
@@ -1721,7 +2300,9 @@ export default function App() {
                           <button
                             type="button"
                             className="page-link"
-                            onClick={() => goToPage(page - 1)}
+                            onClick={() =>
+                              goToPage(page - 1)
+                            }
                             disabled={page === 1}
                           >
                             Previous
@@ -1735,7 +2316,9 @@ export default function App() {
                           <li
                             key={pageNumber}
                             className={`page-item ${
-                              pageNumber === page ? "active" : ""
+                              pageNumber === page
+                                ? "active"
+                                : ""
                             }`}
                           >
                             <button
@@ -1757,14 +2340,20 @@ export default function App() {
 
                         <li
                           className={`page-item ${
-                            page === totalPages ? "disabled" : ""
+                            page === totalPages
+                              ? "disabled"
+                              : ""
                           }`}
                         >
                           <button
                             type="button"
                             className="page-link"
-                            onClick={() => goToPage(page + 1)}
-                            disabled={page === totalPages}
+                            onClick={() =>
+                              goToPage(page + 1)
+                            }
+                            disabled={
+                              page === totalPages
+                            }
                           >
                             Next
                           </button>

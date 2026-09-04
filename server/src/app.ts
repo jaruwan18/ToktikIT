@@ -69,7 +69,7 @@ const upload = multer({
 // ---------------------------------------------------------------------------
 
 async function validateRequester(
-  requesterIdHeader: string | undefined
+  requesterIdHeader: string | undefined,
 ): Promise<number | null> {
   if (!requesterIdHeader) {
     return null;
@@ -77,10 +77,7 @@ async function validateRequester(
 
   const requesterId = Number(requesterIdHeader);
 
-  if (
-    !Number.isInteger(requesterId) ||
-    requesterId < 1
-  ) {
+  if (!Number.isInteger(requesterId) || requesterId < 1) {
     return null;
   }
 
@@ -103,7 +100,7 @@ async function validateRequester(
 // ---------------------------------------------------------------------------
 
 async function removeUploadedFile(
-  filename: string | undefined
+  filename: string | undefined,
 ): Promise<void> {
   if (!filename) {
     return;
@@ -115,7 +112,7 @@ async function removeUploadedFile(
     // File may already have been removed.
     console.warn(
       `Unable to remove uploaded file "${filename}":`,
-      error
+      error,
     );
   }
 }
@@ -131,7 +128,7 @@ app.get(
       status: "ok",
       service: "TokTickIT API",
     });
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -142,32 +139,29 @@ app.get(
   "/api/categories",
   async (_req: Request, res: Response) => {
     try {
-      const categories =
-        await getPrisma().category.findMany({
-          select: {
-            id: true,
-            name: true,
-          },
-
-          orderBy: {
-            id: "asc",
-          },
-        });
+      const categories = await getPrisma().category.findMany({
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: {
+          id: "asc",
+        },
+      });
 
       return res.status(200).json(categories);
     } catch (error) {
       console.error(
         "Failed to retrieve categories:",
-        error
+        error,
       );
 
       return res.status(500).json({
         error: "INTERNAL_ERROR",
-        message:
-          "Unable to retrieve categories.",
+        message: "Unable to retrieve categories.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -194,22 +188,19 @@ app.get(
           },
         });
 
-      return res.status(200).json(
-        relatedSystems
-      );
+      return res.status(200).json(relatedSystems);
     } catch (error) {
       console.error(
         "Failed to retrieve related systems:",
-        error
+        error,
       );
 
       return res.status(500).json({
         error: "INTERNAL_ERROR",
-        message:
-          "Unable to retrieve related systems.",
+        message: "Unable to retrieve related systems.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -231,6 +222,7 @@ app.get(
             id: true,
             name: true,
             email: true,
+            isActive: true,
           },
 
           orderBy: {
@@ -242,16 +234,15 @@ app.get(
     } catch (error) {
       console.error(
         "Failed to retrieve requesters:",
-        error
+        error,
       );
 
       return res.status(500).json({
         error: "INTERNAL_ERROR",
-        message:
-          "Unable to retrieve requesters.",
+        message: "Unable to retrieve requesters.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -351,7 +342,7 @@ app.post(
 
       if (
         !["LOW", "MEDIUM", "HIGH"].includes(
-          requestedPriority
+          requestedPriority,
         )
       ) {
         fields.requestedPriority =
@@ -374,13 +365,10 @@ app.post(
           "Related System is required and must be active.";
       }
 
-      if (
-        Object.keys(fields).length > 0
-      ) {
+      if (Object.keys(fields).length > 0) {
         return res.status(400).json({
           error: "VALIDATION_ERROR",
-          message:
-            "One or more fields are invalid.",
+          message: "One or more fields are invalid.",
           fields,
         });
       }
@@ -454,7 +442,7 @@ app.post(
           0,
           0,
           0,
-          0
+          0,
         );
 
       const startOfNextYear =
@@ -465,7 +453,7 @@ app.post(
           0,
           0,
           0,
-          0
+          0,
         );
 
       for (
@@ -487,7 +475,7 @@ app.post(
           const ticketNumber =
             generateTicketNumber(
               ticketCount + 1,
-              now
+              now,
             );
 
           const ticket =
@@ -519,8 +507,7 @@ app.post(
             }
 
             return res.status(409).json({
-              error:
-                "TICKET_NUMBER_CONFLICT",
+              error: "TICKET_NUMBER_CONFLICT",
             });
           }
 
@@ -529,22 +516,20 @@ app.post(
       }
 
       return res.status(409).json({
-        error:
-          "TICKET_NUMBER_CONFLICT",
+        error: "TICKET_NUMBER_CONFLICT",
       });
     } catch (error) {
       console.error(
         "POST /api/tickets failed:",
-        error
+        error,
       );
 
       return res.status(500).json({
         error: "INTERNAL_ERROR",
-        message:
-          "Unable to create ticket.",
+        message: "Unable to create ticket.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -560,8 +545,7 @@ app.get(
         return res.status(400).json({
           error: {
             code: "INVALID_REQUESTER",
-            message:
-              "requesterId is required.",
+            message: "requesterId is required.",
           },
         });
       }
@@ -596,8 +580,7 @@ app.get(
         return res.status(404).json({
           error: {
             code: "REQUESTER_NOT_FOUND",
-            message:
-              "Requester not found.",
+            message: "Requester not found.",
           },
         });
       }
@@ -627,7 +610,7 @@ app.get(
               pageSizeValue > 0
             ? Math.min(
                 pageSizeValue,
-                50
+                50,
               )
             : 10;
 
@@ -671,12 +654,12 @@ app.get(
       ) {
         const categoryId =
           Number(
-            req.query.categoryId
+            req.query.categoryId,
           );
 
         if (
           Number.isInteger(
-            categoryId
+            categoryId,
           ) &&
           categoryId > 0
         ) {
@@ -691,12 +674,12 @@ app.get(
       ) {
         const relatedSystemId =
           Number(
-            req.query.relatedSystemId
+            req.query.relatedSystemId,
           );
 
         if (
           Number.isInteger(
-            relatedSystemId
+            relatedSystemId,
           ) &&
           relatedSystemId > 0
         ) {
@@ -711,7 +694,7 @@ app.get(
       ) {
         const priority =
           String(
-            req.query.requestedPriority
+            req.query.requestedPriority,
           );
 
         if (
@@ -730,7 +713,7 @@ app.get(
       ) {
         const status =
           String(
-            req.query.currentStatus
+            req.query.currentStatus,
           );
 
         if (status === "NEW") {
@@ -758,7 +741,7 @@ app.get(
 
       const sortBy =
         allowedSortFields.includes(
-          requestedSortBy
+          requestedSortBy,
         )
           ? requestedSortBy
           : "createdAt";
@@ -819,7 +802,7 @@ app.get(
         total === 0
           ? 0
           : Math.ceil(
-              total / pageSize
+              total / pageSize,
             );
 
       return res.status(200).json({
@@ -835,7 +818,7 @@ app.get(
     } catch (error) {
       console.error(
         "GET /api/tickets failed:",
-        error
+        error,
       );
 
       return res.status(500).json({
@@ -846,7 +829,7 @@ app.get(
         },
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -858,18 +841,18 @@ app.get(
   "/api/tickets/:id",
   async (
     req: Request,
-    res: Response
+    res: Response,
   ) => {
     try {
       const requesterId =
         Number(
-          req.query.requesterId
+          req.query.requesterId,
         );
 
       if (
         !req.query.requesterId ||
         !Number.isInteger(
-          requesterId
+          requesterId,
         ) ||
         requesterId < 1
       ) {
@@ -893,7 +876,7 @@ app.get(
               id: true,
               name: true,
             },
-          }
+          },
         );
 
       if (!requester) {
@@ -910,7 +893,7 @@ app.get(
 
       if (
         !Number.isInteger(
-          ticketId
+          ticketId,
         ) ||
         ticketId < 1
       ) {
@@ -980,7 +963,7 @@ app.get(
                 },
               },
             },
-          }
+          },
         );
 
       if (!ticket) {
@@ -1038,7 +1021,7 @@ app.get(
     } catch (error) {
       console.error(
         "Failed to retrieve ticket detail:",
-        error
+        error,
       );
 
       return res.status(500).json({
@@ -1048,7 +1031,7 @@ app.get(
           "Unable to retrieve ticket.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -1071,14 +1054,14 @@ app.post(
   async (
     req: Request,
     res: Response,
-    next: express.NextFunction
+    next: express.NextFunction,
   ) => {
     try {
       const requesterId =
         await validateRequester(
           req.header(
-            "X-Requester-Id"
-          )
+            "X-Requester-Id",
+          ),
         );
 
       if (!requesterId) {
@@ -1095,7 +1078,7 @@ app.post(
 
       if (
         !Number.isInteger(
-          ticketId
+          ticketId,
         ) ||
         ticketId < 1
       ) {
@@ -1119,7 +1102,7 @@ app.post(
               id: true,
               requesterId: true,
             },
-          }
+          },
         );
 
       if (!ticket) {
@@ -1138,7 +1121,7 @@ app.post(
               ticketId,
               isRemoved: false,
             },
-          }
+          },
         );
 
       if (
@@ -1158,12 +1141,12 @@ app.post(
       return upload.single("file")(
         req,
         res,
-        next
+        next,
       );
     } catch (error) {
       console.error(
         "Failed to validate attachment upload:",
-        error
+        error,
       );
 
       return res.status(500).json({
@@ -1177,7 +1160,7 @@ app.post(
 
   async (
     req: Request,
-    res: Response
+    res: Response,
   ) => {
     let storedFilename:
       | string
@@ -1187,8 +1170,8 @@ app.post(
       const requesterId =
         await validateRequester(
           req.header(
-            "X-Requester-Id"
-          )
+            "X-Requester-Id",
+          ),
         );
 
       if (!requesterId) {
@@ -1205,7 +1188,7 @@ app.post(
 
       if (
         !Number.isInteger(
-          ticketId
+          ticketId,
         ) ||
         ticketId < 1
       ) {
@@ -1228,7 +1211,7 @@ app.post(
             select: {
               id: true,
             },
-          }
+          },
         );
 
       if (!ticket) {
@@ -1261,7 +1244,7 @@ app.post(
               ticketId,
               isRemoved: false,
             },
-          }
+          },
         );
 
       if (
@@ -1269,7 +1252,7 @@ app.post(
         MAX_ACTIVE_ATTACHMENTS
       ) {
         await removeUploadedFile(
-          storedFilename
+          storedFilename,
         );
 
         return res.status(409).json({
@@ -1308,22 +1291,22 @@ app.post(
               uploadedAt: true,
               isRemoved: true,
             },
-          }
+          },
         );
 
       return res.status(201).json(
-        attachment
+        attachment,
       );
     } catch (error) {
       if (storedFilename) {
         await removeUploadedFile(
-          storedFilename
+          storedFilename,
         );
       }
 
       console.error(
         "Failed to upload attachment:",
-        error
+        error,
       );
 
       return res.status(500).json({
@@ -1333,7 +1316,7 @@ app.post(
           "Unable to upload attachment.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -1345,14 +1328,14 @@ app.get(
   "/api/tickets/:id/attachments",
   async (
     req: Request,
-    res: Response
+    res: Response,
   ) => {
     try {
       const requesterId =
         await validateRequester(
           req.header(
-            "X-Requester-Id"
-          )
+            "X-Requester-Id",
+          ),
         );
 
       if (!requesterId) {
@@ -1369,7 +1352,7 @@ app.get(
 
       if (
         !Number.isInteger(
-          ticketId
+          ticketId,
         ) ||
         ticketId < 1
       ) {
@@ -1392,7 +1375,7 @@ app.get(
             select: {
               id: true,
             },
-          }
+          },
         );
 
       if (!ticket) {
@@ -1426,16 +1409,16 @@ app.get(
             orderBy: {
               uploadedAt: "asc",
             },
-          }
+          },
         );
 
       return res.status(200).json(
-        attachments
+        attachments,
       );
     } catch (error) {
       console.error(
         "Failed to retrieve attachments:",
-        error
+        error,
       );
 
       return res.status(500).json({
@@ -1445,7 +1428,7 @@ app.get(
           "Unable to retrieve attachments.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -1457,14 +1440,14 @@ app.get(
   "/api/attachments/:id/download",
   async (
     req: Request,
-    res: Response
+    res: Response,
   ) => {
     try {
       const requesterId =
         await validateRequester(
           req.header(
-            "X-Requester-Id"
-          )
+            "X-Requester-Id",
+          ),
         );
 
       if (!requesterId) {
@@ -1481,7 +1464,7 @@ app.get(
 
       if (
         !Number.isInteger(
-          attachmentId
+          attachmentId,
         ) ||
         attachmentId < 1
       ) {
@@ -1512,7 +1495,7 @@ app.get(
               mimeType: true,
               isRemoved: true,
             },
-          }
+          },
         );
 
       if (!attachment) {
@@ -1536,19 +1519,19 @@ app.get(
       const filePath =
         path.join(
           UPLOAD_DIR,
-          attachment.storedFilename
+          attachment.storedFilename,
         );
 
       res.setHeader(
         "Content-Type",
-        attachment.mimeType
+        attachment.mimeType,
       );
 
       res.setHeader(
         "Content-Disposition",
         `attachment; filename="${encodeURIComponent(
-          attachment.originalFilename
-        )}"`
+          attachment.originalFilename,
+        )}"`,
       );
 
       return res.sendFile(
@@ -1560,7 +1543,7 @@ app.get(
           ) {
             console.error(
               "Failed to download attachment:",
-              error
+              error,
             );
 
             res.status(500).json({
@@ -1570,12 +1553,12 @@ app.get(
                 "Unable to download attachment.",
             });
           }
-        }
+        },
       );
     } catch (error) {
       console.error(
         "Failed to retrieve attachment:",
-        error
+        error,
       );
 
       return res.status(500).json({
@@ -1585,7 +1568,7 @@ app.get(
           "Unable to download attachment.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -1597,14 +1580,14 @@ app.delete(
   "/api/attachments/:id",
   async (
     req: Request,
-    res: Response
+    res: Response,
   ) => {
     try {
       const requesterId =
         await validateRequester(
           req.header(
-            "X-Requester-Id"
-          )
+            "X-Requester-Id",
+          ),
         );
 
       if (!requesterId) {
@@ -1621,7 +1604,7 @@ app.delete(
 
       if (
         !Number.isInteger(
-          attachmentId
+          attachmentId,
         ) ||
         attachmentId < 1
       ) {
@@ -1664,7 +1647,7 @@ app.delete(
               ticketId: true,
               isRemoved: true,
             },
-          }
+          },
         );
 
       if (!attachment) {
@@ -1712,18 +1695,18 @@ app.delete(
               removedAt: true,
               removalReason: true,
             },
-          }
+          },
         );
 
       return res
         .status(200)
         .json(
-          updatedAttachment
+          updatedAttachment,
         );
     } catch (error) {
       console.error(
         "Failed to remove attachment:",
-        error
+        error,
       );
 
       return res.status(500).json({
@@ -1733,7 +1716,7 @@ app.delete(
           "Unable to remove attachment.",
       });
     }
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -1745,7 +1728,7 @@ app.use(
     error: unknown,
     _req: Request,
     res: Response,
-    _next: express.NextFunction
+    _next: express.NextFunction,
   ) => {
     if (
       error instanceof
@@ -1786,7 +1769,7 @@ app.use(
 
     console.error(
       "Unhandled application error:",
-      error
+      error,
     );
 
     return res.status(500).json({
@@ -1795,7 +1778,7 @@ app.use(
       message:
         "Internal server error.",
     });
-  }
+  },
 );
 
 // ---------------------------------------------------------------------------

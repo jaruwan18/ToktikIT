@@ -1,222 +1,245 @@
-\# Lab 2 Test Plan and Results
+# Lab 2 Test Plan
 
+## 1. Test Strategy
 
+Lab 2 follows a test-first approach based on the Lab 2 specification, API specification, and UI specification.
 
-\## 1. Test Strategy
+The test strategy covers the following levels:
 
+1. **Unit Test**
+   - Verify Ticket Number generation and formatting.
+   - Verify the business logic required by Lab 2.
 
+2. **API / Integration Test**
+   - Verify requester validation.
+   - Verify ticket creation and validation.
+   - Verify My Tickets filtering, searching, sorting, pagination, and ownership isolation.
+   - Verify Ticket Detail ownership protection.
+   - Verify attachment validation, ownership, soft removal, and download protection.
+   - Verify requester and related-system reference data.
 
-Tests are planned before implementation (Test-Driven Development). For each Issue, failing tests are
+3. **UI Component Test**
+   - Verify Create Ticket form behaviour.
+   - Verify client-side validation.
+   - Verify successful ticket creation.
+   - Verify API failure handling and preservation of entered values.
 
-written first against the planned API/UI contract, then the smallest correct implementation is added
+4. **Responsive / Visual Test**
+   - Verify Desktop, Tablet, and Mobile layouts.
+   - Verify no clipping, overlapping content, or unwanted horizontal scrolling.
 
-until the test passes, then the code is refactored while keeping tests green. No test is skipped,
+5. **End-to-End Test**
+   - Verify the requester ticket workflow from the UI.
+   - Verify requester ownership isolation.
+   - Verify attachment lifecycle behaviour.
 
-disabled, or commented out in the final `main` branch.
+No required test is intentionally skipped, disabled, or commented out.
 
+---
 
+## 2. Planned Tests and Current Status
 
-Test levels used: Unit, API (Supertest), UI component (Vitest + React Testing Library), Responsive
+### 2.1 Unit Tests
 
-(Playwright screenshots), and E2E (Playwright).
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| UNIT-01 | BR-01 | Ticket Number format and generation | `server/tests/lab-02/ticket-number.test.ts` | **Passed** |
 
+UNIT-01 verifies the backend-generated Ticket Number, including the required `TKT-YYYY-NNNNNN` format and Ticket Number generation behaviour.
 
+---
 
-\## 2. Planned Tests
+### 2.2 API / Integration Tests
 
+#### Create Ticket API
 
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| API-01 | AC-01, BR-01, BR-02 | Create valid ticket and return official Ticket Number | `server/tests/lab-02/create-ticket.test.ts` | **Passed** |
+| API-02 | AC-04, BR-04 | Reject summary shorter than 5 characters | `server/tests/lab-02/create-ticket.test.ts` | **Passed** |
+| API-03 | BR-05 | Validate description length | `server/tests/lab-02/create-ticket.test.ts` | **Passed** |
+| API-04 | BR-06 | Validate category and related-system IDs | `server/tests/lab-02/create-ticket.test.ts` | **Passed** |
+| API-05 | BR-07 | Validate priority value | `server/tests/lab-02/create-ticket.test.ts` | **Passed** |
 
-| Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
+Actual implementation uses:
 
-|---|---|---|---|---|---|---|
+`server/tests/lab-02/create-ticket.test.ts`
 
-| UNIT-01 | Unit | BR-01 | Ticket Number generator produces `TKT-YYYY-NNNNNN` format | Format matches regex, unique per call | `server/src/utils/\_\_tests\_\_/ticketNumber.test.ts` | Pending |
+This file contains **6 passing tests**.
 
-| API-01 | API | AC-01, BR-01, BR-02 | POST /api/tickets with valid data | 201; Ticket saved with unique ticketNumber; currentStatus = NEW | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
+---
 
-| API-02 | API | AC-04, BR-04 | POST /api/tickets with Summary < 5 chars | 400; VALIDATION\_ERROR with fields.summary message | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
+#### My Tickets API
 
-| API-03 | API | BR-05 | POST /api/tickets with Description < 10 chars | 400; VALIDATION\_ERROR with fields.description message | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| API-06 | AC-09, FR-04 | Return only tickets belonging to selected requester | `server/tests/lab-02/my-tickets.test.ts` | **Passed** |
+| API-07 | BR-12 | Search tickets by Ticket Number | `server/tests/lab-02/my-tickets.test.ts` | **Passed** |
+| API-08 | BR-12 | Search tickets by Summary | `server/tests/lab-02/my-tickets.test.ts` | **Passed** |
+| API-09 | BR-11 | Pagination and page-size behaviour | `server/tests/lab-02/my-tickets.test.ts` | **Passed** |
+| API-10 | AC-11 | Empty state when requester has no tickets | `server/tests/lab-02/my-tickets.test.ts` | **Passed** |
 
-| API-04 | API | BR-06 | POST /api/tickets with inactive/unknown categoryId | 400; INVALID\_REFERENCE | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
+Additional My Tickets API cases are also covered by the same test file, including filtering and ticket-list behaviour.
 
-| API-05 | API | BR-07 | POST /api/tickets with invalid requestedPriority value | 400; VALIDATION\_ERROR | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
+Actual implementation:
 
-| API-06 | API | AC-09, FR-04 | GET /api/tickets scoped to requesterId | 200; only the calling Requester's tickets returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
+`server/tests/lab-02/my-tickets.test.ts`
 
-| API-07 | API | BR-12 | GET /api/tickets?search=laptop | 200; only matching Ticket Number/Summary returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
+The file contains **11 passing tests**.
 
-| API-08 | API | BR-12 | GET /api/tickets?categoryId\&requestedPriority\&currentStatus combined | 200; results satisfy AND of all filters | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
+---
 
-| API-09 | API | BR-11 | GET /api/tickets?page=999\&pageSize=9999 | 200; falls back to page=1, pageSize=10 (capped at 50) | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
+#### Ticket Detail API
 
-| API-10 | API | AC-11 | GET /api/tickets for a Requester with zero tickets | 200; data: \[], totalItems: 0 | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| API-11 | AC-03, BR-09 | Prevent requester from accessing another requester's ticket | `server/tests/lab-02/ticket-detail.test.ts` | **Passed** |
+| API-12 | FR-06 | Retrieve ticket detail for the owning requester | `server/tests/lab-02/ticket-detail.test.ts` | **Passed** |
 
-| API-11 | API | AC-03, BR-09 | GET /api/tickets/:id for a Ticket owned by a different Requester | 404 TICKET\_NOT\_FOUND | `server/tests/lab-02/ticket-detail.api.test.ts` | Pending |
+Actual implementation:
 
-| API-12 | API | FR-06 | GET /api/tickets/:id for an owned Ticket | 200; full detail including attachments array | `server/tests/lab-02/ticket-detail.api.test.ts` | Pending |
+`server/tests/lab-02/ticket-detail.test.ts`
 
-| API-13 | API | AC-07, BR-15 | POST /api/tickets/:id/attachments with a 6 MB file | 400 FILE\_TOO\_LARGE | `server/tests/lab-02/attachments.api.test.ts` | Pending |
+The file contains **7 passing tests**.
 
-| API-14 | API | BR-15 | POST /api/tickets/:id/attachments with a .gif file | 400 UNSUPPORTED\_FILE\_TYPE | `server/tests/lab-02/attachments.api.test.ts` | Pending |
+---
 
-| API-15 | API | AC-08, BR-15 | POST /api/tickets/:id/attachments as the 6th active attachment | 409 ATTACHMENT\_LIMIT\_REACHED | `server/tests/lab-02/attachments.api.test.ts` | Pending |
+#### Attachment API
 
-| API-16 | API | AC-12, BR-16 | DELETE /api/attachments/:id with a valid reason | 200; isRemoved true; metadata retained | `server/tests/lab-02/attachments.api.test.ts` | Pending |
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| API-13 | AC-07, BR-15 | Reject attachment larger than 5 MB | `server/tests/lab-02/attachments.test.ts` | **Passed** |
+| API-14 | BR-15 | Validate permitted attachment types | `server/tests/lab-02/attachments.test.ts` | **Passed** |
+| API-15 | AC-08 | Reject attachment when 5 active attachments already exist | `server/tests/lab-02/attachments.test.ts` | **Passed** |
+| API-16 | AC-12, BR-16 | Soft-remove attachment and preserve metadata | `server/tests/lab-02/attachments.test.ts` | **Passed** |
+| API-17 | BR-17 | Verify attachment ownership protection | `server/tests/lab-02/attachments.test.ts` | **Passed** |
+| API-18 | AC-13 | Block download of a soft-removed attachment | `server/tests/lab-02/attachments.test.ts` | **Passed** |
 
-| API-17 | API | BR-17 | DELETE /api/attachments/:id owned by a different Requester's Ticket | 404 TICKET\_NOT\_FOUND | `server/tests/lab-02/attachments.api.test.ts` | Pending |
+Actual implementation:
 
-| API-18 | API | AC-13 | GET /api/attachments/:id/download for a removed attachment | 410 ATTACHMENT\_REMOVED (no file content returned) | `server/tests/lab-02/attachments.api.test.ts` | Pending |
+`server/tests/lab-02/attachments.test.ts`
 
-| API-19 | API | AC-14, BR-18 | GET /api/requesters | 200; inactive Requester excluded from list | `server/tests/lab-02/requesters.api.test.ts` | Pending |
+The file contains **13 passing tests**.
 
-| API-20 | API | AC-15 | GET /api/requesters when no active Requesters exist | 200; empty array | `server/tests/lab-02/requesters.api.test.ts` | Pending |
-| API-21 | API | FR-03, Section 6 | GET /api/related-systems | 200; active Related Systems returned in a predictable order | `server/tests/lab-02/reference-data.api.test.ts` | Pending |
-| API-22 | API | Section 0 of api-spec.md | Any Ticket/Attachment endpoint called with missing or invalid requesterId | 400 INVALID_REQUESTER | `server/tests/lab-02/requester-identity.api.test.ts` | Pending |
+---
 
-| UI-01 | UI | AC-02 | Access My Tickets with no Requester selected | Redirects to / renders Requester Selection screen | `client/src/features/tickets/\_\_tests\_\_/MyTickets.test.tsx` | Pending |
+#### Requester API
 
-| UI-02 | UI | AC-04 | Submit Create Ticket form with empty Summary | Field-level error shown; no API call made | `client/src/features/tickets/\_\_tests\_\_/CreateTicket.test.tsx` | Pending |
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| API-19 | AC-14, BR-18 | Inactive requester is not available for selection | `server/tests/lab-02/requesters.test.ts` | **Passed** |
+| API-20 | AC-15 | Handle requester list when no active requester is available | `server/tests/lab-02/requesters.test.ts` | **Passed** |
 
-| UI-03 | UI | AC-05 | Click Submit on a valid Create Ticket form | Button shows busy state and is disabled during request | `client/src/features/tickets/\_\_tests\_\_/CreateTicket.test.tsx` | Pending |
+Actual implementation:
 
-| UI-04 | UI | AC-06 | Submit valid ticket while API is mocked to fail | Error banner shown; all field values preserved | `client/src/features/tickets/\_\_tests\_\_/CreateTicket.test.tsx` | Pending |
+`server/tests/lab-02/requesters.test.ts`
 
-| UI-05 | UI | AC-07 | Select a 6 MB file in the attachment picker | Inline rejection message shown; file not added to list | `client/src/features/tickets/\_\_tests\_\_/CreateTicket.test.tsx` | Pending |
+The file contains **3 passing tests**.
 
-| UI-06 | UI | AC-01 | Successful ticket creation | Success panel shows the returned official Ticket Number | `client/src/features/tickets/\_\_tests\_\_/CreateTicket.test.tsx` | Pending |
+---
 
-| UI-07 | UI | AC-09, AC-17 | Switch Requester A -> B in My Tickets | List updates to show only Requester B's tickets | `client/src/features/tickets/\_\_tests\_\_/MyTickets.test.tsx` | Pending |
+#### Related-System / Reference Data API
 
-| UI-08 | UI | AC-10 | Search with a term matching no tickets | No-results state shown, distinct copy from Empty state | `client/src/features/tickets/\_\_tests\_\_/MyTickets.test.tsx` | Pending |
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| API-21 | FR-03 | Related-system reference data behaviour | `server/tests/lab-02/related-systems.test.ts` | **Passed** |
 
-| UI-09 | UI | AC-11 | Load My Tickets for a Requester with zero tickets | Empty state with Create Ticket CTA shown | `client/src/features/tickets/\_\_tests\_\_/MyTickets.test.tsx` | Pending |
+Actual implementation:
 
-| UI-10 | UI | AC-14, AC-15 | Load Development Requester Selector | Inactive Requester excluded; empty state shown if none active | `client/src/features/requester/\_\_tests\_\_/RequesterSelector.test.tsx` | Pending |
+`server/tests/lab-02/related-systems.test.ts`
 
-| UI-11 | UI | AC-12 | Soft-remove an attachment with a reason in Ticket Detail | Attachment shows "Removed" state with reason; download disabled | `client/src/features/tickets/\_\_tests\_\_/RequesterTicketDetail.test.tsx` | Pending |
+The file contains **3 passing tests**.
 
-| UI-12 | UI | Section 8.3 | TokTickIT heading and Zen Green header render | Heading and primary color token present | `client/src/features/shell/\_\_tests\_\_/AppShell.test.tsx` | Pending |
+---
 
-| RESP-01 | Responsive | AC-16, Section 8.7 | My Tickets at Mobile viewport (<768px) | List renders as cards; no horizontal scroll | `e2e/lab-02/responsive-my-tickets.spec.ts` | Pending |
+#### Requester Identity API
 
-| RESP-02 | Responsive | Section 8.7 | Create Ticket at Tablet viewport (768-991px) | Two-column layout; no clipped labels | `e2e/lab-02/responsive-create-ticket.spec.ts` | Pending |
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| API-22 | API specification / requester identity rules | Dedicated requester identity validation test | `server/tests/lab-02/requester-identity.api.test.ts` | **Not separately implemented** |
 
-| RESP-03 | Responsive | Section 8.7 | Ticket Detail at Desktop viewport (>=992px) | Multi-column layout; header/attachments clearly separated | `e2e/lab-02/responsive-ticket-detail.spec.ts` | Pending |
+The requester identity rules are exercised by the existing Lab 2 API tests, but there is currently no separate file named:
 
-| E2E-01 | E2E | AC-01, AC-09 | Full flow: select Requester -> create ticket -> find it in My Tickets | Ticket appears in My Tickets with matching Ticket Number | `e2e/lab-02/create-ticket-flow.spec.ts` | Pending |
+`server/tests/lab-02/requester-identity.api.test.ts`
 
-| E2E-02 | E2E | AC-03, AC-17 | Full flow: Requester A creates a ticket; switch to Requester B | Requester B cannot see or open Requester A's ticket (404 / not listed) | `e2e/lab-02/ownership-isolation.spec.ts` | Pending |
+Therefore API-22 is not marked as a separate passed test.
 
-| E2E-03 | E2E | AC-12, AC-13 | Full flow: add attachment -> soft-remove it -> attempt download | Attachment shows removed state; download blocked | `e2e/lab-02/attachment-lifecycle.spec.ts` | Pending |
+---
 
+## 2.3 UI Component Tests
 
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| UI-01 | AC-02 | Requester selection / Create Ticket UI display | `client/tests/lab-02/App.lab2.test.tsx` | **Partial / Not separately mapped** |
+| UI-02 | AC-04 | Required-field and summary validation | `client/tests/lab-02/App.lab2.test.tsx` | **Passed** |
+| UI-03 | AC-05 | Submit button disabled while request is in progress | `client/tests/lab-02/App.lab2.test.tsx` | **Not separately implemented** |
+| UI-04 | AC-06 | API failure preserves entered form values | `client/tests/lab-02/App.lab2.test.tsx` | **Passed** |
+| UI-05 | AC-07 | Invalid attachment rejected before upload | `client/tests/lab-02/App.lab2.test.tsx` | **Not separately implemented** |
+| UI-06 | AC-01 | Successful creation displays official Ticket Number | `client/tests/lab-02/App.lab2.test.tsx` | **Passed** |
+| UI-07 | AC-09, AC-17 | My Tickets requester isolation and requester switching | `client/tests/lab-02/App.lab2.test.tsx` | **Not separately implemented** |
+| UI-08 | AC-10 | No-results search state | `client/tests/lab-02/App.lab2.test.tsx` | **Not separately implemented** |
+| UI-09 | AC-11 | Empty ticket-list state and Create Ticket CTA | `client/tests/lab-02/App.lab2.test.tsx` | **Not separately implemented** |
+| UI-10 | AC-14, AC-15 | Requester selector inactive/empty states | `client/tests/lab-02/App.lab2.test.tsx` | **Not separately implemented** |
+| UI-11 | AC-12 | Soft-removed attachment UI behaviour | `client/tests/lab-02/App.lab2.test.tsx` | **Not separately implemented** |
+| UI-12 | UI specification | General UI component behaviour | `client/tests/lab-02/App.lab2.test.tsx` | **Not separately implemented** |
 
-\## 3. Acceptance-Criterion Traceability
+The current Lab 2 UI test file contains **6 passing tests** covering:
 
+- Create Ticket form display
+- Required-field validation
+- Summary minimum-length validation
+- Description minimum-length validation
+- Successful ticket creation and official Ticket Number
+- API failure with preservation of entered form values
 
+Actual test file:
 
-| AC | Description (short) | Covered by Test IDs |
+`client/tests/lab-02/App.lab2.test.tsx`
 
-|---|---|---|
+---
 
-| AC-01 | Valid submission saves Ticket + shows official number | API-01, UI-06, E2E-01 |
+## 2.4 Responsive and Visual Tests
 
-| AC-02 | No Requester selected -> redirected to selector | UI-01 |
+The Lab 2 specification requires responsive verification for:
 
-| AC-03 | Cross-Requester ticket access denied | API-11, E2E-02 |
+- Desktop: ≥ 992 px
+- Tablet: 768–991 px
+- Mobile: < 768 px
 
-| AC-04 | Summary too short -> field validation, no API call | API-02, UI-02 |
+The required checks include:
 
-| AC-05 | Submit shows busy state | UI-03 |
+- No horizontal page scrolling on Mobile.
+- No clipped text.
+- No overlapping controls or content.
+- My Tickets changes appropriately for smaller screen sizes.
+- Layout remains usable on Desktop, Tablet, and Mobile.
+- Playwright screenshots are captured for visual verification.
 
-| AC-06 | API failure preserves form values | UI-04 |
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| RESP-01 | AC-16 | Mobile My Tickets layout | `e2e/lab-02/responsive-mobile.spec.ts` | **Not separately implemented** |
+| RESP-02 | Responsive UI | Tablet layout | `e2e/lab-02/responsive-tablet.spec.ts` | **Not separately implemented** |
+| RESP-03 | Responsive UI | Desktop layout | `e2e/lab-02/responsive-desktop.spec.ts` | **Not separately implemented** |
 
-| AC-07 | Oversized file rejected before upload | API-13, UI-05 |
+The current repository does not contain the three dedicated `responsive-*.spec.ts` files.
 
-| AC-08 | 6th attachment rejected | API-15 |
+Responsive behaviour therefore still requires final visual/screenshot verification.
 
-| AC-09 | My Tickets scoped to owning Requester | API-06, UI-07, E2E-01 |
+---
 
-| AC-10 | Search with no matches -> no-results state | UI-08 |
+## 2.5 End-to-End Tests
 
-| AC-11 | Zero tickets -> empty state | API-10, UI-09 |
+The implemented Playwright E2E tests are consolidated in:
 
-| AC-12 | Soft-remove preserves metadata, blocks download | API-16, UI-11, E2E-03 |
+`e2e/lab-02/requester-ticket-flow.spec.ts`
 
-| AC-13 | Removed attachment cannot be downloaded | API-18, E2E-03 |
+| ID | Requirement / AC | Test | Actual Test Path | Status |
+|---|---|---|---|---|
+| E2E-01 | AC-01, AC-09 | Requester creates a ticket and verifies ticket workflow | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Passed** |
+| E2E-02 | AC-03, AC-17 | Requester ownership isolation and requester switching | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Passed** |
+| E2E-03 | AC-12, AC-13 | Attachment lifecycle and soft-removal behaviour | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Passed** |
 
-| AC-14 | Inactive Requester excluded from selector | API-19, UI-10 |
+The final Playwright run produced:
 
-| AC-15 | No active Requesters -> empty selector state | API-20, UI-10 |
-
-| AC-16 | Mobile My Tickets collapses to cards, no h-scroll | RESP-01 |
-
-| AC-17 | Switching Requester clears and reloads data | UI-07, E2E-02 |
-
-
-
-\## 4. Responsive and Visual Checklist
-
-
-
-See `docs/lab-02/ui-spec.md` Section 11 for the full checklist. Screenshots are stored under
-
-`artifacts/lab-02/screenshots/{create-ticket,my-tickets,ticket-detail}/` at Desktop, Tablet, and
-
-Mobile widths, captured via the Playwright specs listed under RESP-01 to RESP-03 above.
-
-
-
-\## 5. Test Commands
-
-
-
-```bash
-
-\# Backend (API + Unit)
-
-cd server
-
-npm test
-
-
-
-\# Frontend (UI component)
-
-cd client
-
-npm test
-
-
-
-\# End-to-end (Playwright)
-
-npx playwright test e2e/lab-02
-
-```
-
-
-
-\## 6. Final Results
-
-
-
-To be filled in after implementation is complete, with actual pass/fail counts and a copy of the
-
-final terminal output from each command above, run on the `main` branch.
-
-
-
-\## 7. Known Limitations or Deferred Tests
-
-
-
-\- Server-side idempotency-key based duplicate-submission prevention is out of scope for Lab 2
-
-&#x20; (client-side disable-on-submit only, per specification.md Assumptions).
-
-\- Concurrent-edit conflict testing (two tabs modifying the same Ticket) is deferred; Lab 2 has no
-
-&#x20; ticket-editing feature beyond attachment management, so this risk is minimal.
-
+```text
+3 passed
