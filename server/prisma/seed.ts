@@ -167,7 +167,9 @@ async function main() {
       where: { email: user.email },
       update: {
         displayName: user.displayName,
+        passwordHash,
         role: user.role,
+        mustChangePassword: false,
         isActive: user.isActive,
       },
       create: {
@@ -175,13 +177,13 @@ async function main() {
         displayName: user.displayName,
         passwordHash,
         role: user.role,
-        mustChangePassword: true,
+        mustChangePassword: false,
         isActive: user.isActive,
       },
     });
 
     savedUsers.set(user.email, savedUser);
-
+    
     if (user.role === Role.REQUESTER) {
       await prisma.requester.update({
         where: { email: user.email },

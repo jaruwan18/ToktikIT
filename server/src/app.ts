@@ -1,4 +1,7 @@
-import express, { Request, Response } from "express";
+import express, {
+  Request,
+  Response,
+} from "express";
 import cors from "cors";
 import { Prisma } from "@prisma/client";
 import multer from "multer";
@@ -7,11 +10,19 @@ import crypto from "crypto";
 import fs from "fs/promises";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticketNumber.js";
+import {
+  authRouter,
+  sessionMiddleware,
+} from "./auth.js";
 
 export const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use(sessionMiddleware);
+
+app.use("/api/auth", authRouter);
 
 // ---------------------------------------------------------------------------
 // Attachment upload configuration
