@@ -64,7 +64,7 @@ model Requester {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  userId Int?  @unique
+  userId Int? @unique
   user   User? @relation(fields: [userId], references: [id])
 
   tickets Ticket[]
@@ -83,7 +83,6 @@ model RelatedSystem {
   name      String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-
   tickets Ticket[]
 }
 
@@ -102,10 +101,10 @@ model Ticket {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  requester     Requester       @relation(fields: [requesterId], references: [id])
-  category      Category        @relation(fields: [categoryId], references: [id])
-  relatedSystem RelatedSystem   @relation(fields: [relatedSystemId], references: [id])
-  owner         User?           @relation("TicketOwner", fields: [ownerId], references: [id])
+  requester     Requester     @relation(fields: [requesterId], references: [id])
+  category      Category      @relation(fields: [categoryId], references: [id])
+  relatedSystem RelatedSystem @relation(fields: [relatedSystemId], references: [id])
+  owner         User?         @relation("TicketOwner", fields: [ownerId], references: [id])
   attachments   Attachment[]
   messages      TicketMessage[]
 
