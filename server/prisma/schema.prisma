@@ -19,12 +19,21 @@ enum RequestedPriority {
   HIGH
 }
 
+enum ItPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 enum CurrentStatus {
   NEW
+  OPEN
   IN_PROGRESS
   WAITING_FOR_REQUESTER
   RESOLVED
   CLOSED
+  REOPENED
+  CANCELLED
 }
 
 enum TicketMessageType {
@@ -33,19 +42,19 @@ enum TicketMessageType {
 }
 
 model User {
-  id                Int      @id @default(autoincrement())
-  email             String   @unique
-  displayName       String
-  passwordHash      String
-  role              Role
+  id                 Int      @id @default(autoincrement())
+  email              String   @unique
+  displayName        String
+  passwordHash       String
+  role               Role
   mustChangePassword Boolean  @default(true)
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  requester Requester?
-  ownedTickets Ticket[] @relation("TicketOwner")
-  messages TicketMessage[] @relation("MessageAuthor")
+  requester    Requester?
+  ownedTickets Ticket[]        @relation("TicketOwner")
+  messages     TicketMessage[] @relation("MessageAuthor")
 }
 
 model Requester {
@@ -74,7 +83,6 @@ model RelatedSystem {
   name      String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-
   tickets Ticket[]
 }
 
@@ -88,6 +96,7 @@ model Ticket {
   summary           String
   description       String
   requestedPriority RequestedPriority
+  itPriority        ItPriority        @default(MEDIUM)
   currentStatus     CurrentStatus     @default(NEW)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
