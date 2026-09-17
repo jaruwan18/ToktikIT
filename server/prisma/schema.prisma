@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMIN
+}
+
 enum RequestedPriority {
   LOW
   MEDIUM
@@ -15,6 +21,31 @@ enum RequestedPriority {
 
 enum CurrentStatus {
   NEW
+  IN_PROGRESS
+  WAITING_FOR_REQUESTER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketMessageType {
+  COMMENT
+  INTERNAL_NOTE
+}
+
+model User {
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  displayName       String
+  passwordHash      String
+  role              Role
+  mustChangePassword Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  requester Requester?
+  ownedTickets Ticket[] @relation("TicketOwner")
+  messages TicketMessage[] @relation("MessageAuthor")
 }
 
 model Requester {
@@ -23,6 +54,9 @@ model Requester {
   email     String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  userId Int? @unique
+  user   User? @relation(fields: [userId], references: [id])
 
   tickets Ticket[]
 }
@@ -50,6 +84,7 @@ model Ticket {
   requesterId       Int
   categoryId        Int
   relatedSystemId   Int
+  ownerId           Int?
   summary           String
   description       String
   requestedPriority RequestedPriority
@@ -60,11 +95,15 @@ model Ticket {
   requester     Requester     @relation(fields: [requesterId], references: [id])
   category      Category      @relation(fields: [categoryId], references: [id])
   relatedSystem RelatedSystem @relation(fields: [relatedSystemId], references: [id])
+  owner         User?         @relation("TicketOwner", fields: [ownerId], references: [id])
   attachments   Attachment[]
+  messages      TicketMessage[]
 
   @@index([requesterId])
   @@index([categoryId])
   @@index([relatedSystemId])
+  @@index([ownerId])
+  @@index([currentStatus])
 }
 
 model Attachment {
@@ -82,4 +121,20 @@ model Attachment {
   ticket Ticket @relation(fields: [ticketId], references: [id])
 
   @@index([ticketId])
+}
+
+model TicketMessage {
+  id        Int               @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  type      TicketMessageType
+  body      String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation("MessageAuthor", fields: [authorId], references: [id])
+
+  @@index([ticketId])
+  @@index([authorId])
 }
