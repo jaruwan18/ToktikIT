@@ -3,7 +3,7 @@ import express, {
   Response,
 } from "express";
 import cors from "cors";
-import { Prisma } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
@@ -14,6 +14,7 @@ import {
   authRouter,
   sessionMiddleware,
 } from "./auth.js";
+import { requireRole } from "./authorization.js";
 
 export const app = express();
 
@@ -23,6 +24,125 @@ app.use(express.json());
 app.use(sessionMiddleware);
 
 app.use("/api/auth", authRouter);
+
+app.get(
+  "/api/it/tickets",
+  requireRole(Role.IT_STAFF, Role.ADMIN),
+  async (req: Request, res: Response) => {
+    try {
+      const pageValue = Number(req.query.page);
+      const pageSizeValue = Number(req.query.pageSize);
+
+      const page =
+        Number.isInteger(pageValue) && pageValue > 0
+          ? pageValue
+          : 1;
+
+      const pageSize =
+        Number.isInteger(pageSizeValue) && pageSizeValue > 0
+          ? Math.min(pageSizeValue, 50)
+          : 10;
+
+      const search =
+        typeof req.query.search === "string"
+          ? req.query.search.trim()
+          : "";
+
+      const currentStatus =
+        typeof req.query.currentStatus === "string"
+          ? req.query.currentStatus
+          : undefined;
+
+      const itPriority =
+        typeof req.query.itPriority === "string"
+          ? req.query.itPriority
+          : undefined;
+
+      const where: any = {};
+
+      if (search.length > 0) {
+        where.OR = [
+          {
+            ticketNumber: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            summary: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        ];
+      }
+
+      if (
+        [
+          "NEW",
+          "OPEN",
+          "IN_PROGRESS",
+          "WAITING_FOR_REQUESTER",
+          "RESOLVED",
+          "CLOSED",
+          "REOPENED",
+          "CANCELLED",
+        ].includes(currentStatus ?? "")
+      ) {
+        where.currentStatus = currentStatus;
+      }
+
+      if (
+        ["LOW", "MEDIUM", "HIGH"].includes(itPriority ?? "")
+      ) {
+        where.itPriority = itPriority;
+      }
+
+      const skip = (page - 1) * pageSize;
+
+      const [tickets, total] = await Promise.all([
+        getPrisma().ticket.findMany({
+          where,
+          include: {
+            requester: true,
+            category: true,
+            relatedSystem: true,
+            owner: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          skip,
+          take: pageSize,
+        }),
+
+        getPrisma().ticket.count({
+          where,
+        }),
+      ]);
+
+      return res.status(200).json({
+        data: tickets,
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      });
+    } catch (error) {
+      console.error(
+        "GET /api/it/tickets failed:",
+        error,
+      );
+
+      return res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: "Unable to retrieve IT Staff tickets.",
+      });
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Attachment upload configuration
@@ -215,7 +335,7 @@ app.get(
 );
 
 // ---------------------------------------------------------------------------
-// GET /api/requesters
+// GET /api/requesterimport { Role } from "@prisma/client";
 // Development Requester Context
 // ---------------------------------------------------------------------------
 
