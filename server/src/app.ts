@@ -15,6 +15,7 @@ import {
   sessionMiddleware,
 } from "./auth.js";
 import { requireRole } from "./authorization.js";
+import { adminUsersRouter } from "./adminUsers.js";
 
 export const app = express();
 
@@ -24,6 +25,7 @@ app.use(express.json());
 app.use(sessionMiddleware);
 
 app.use("/api/auth", authRouter);
+app.use("/api/admin", adminUsersRouter);
 
 // ---------------------------------------------------------------------------
 // GET /api/it/tickets
