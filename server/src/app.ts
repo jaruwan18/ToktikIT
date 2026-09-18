@@ -288,13 +288,11 @@ app.get(
           ticket.requester,
         requesterName: ticket.requester.name,
 
-
         categoryId:
           ticket.categoryId,
         category:
           ticket.category,
         categoryName: ticket.category.name,
-
 
         relatedSystemId:
           ticket.relatedSystemId,
@@ -1163,6 +1161,224 @@ app.get(
           message:
             "Unable to retrieve tickets.",
         },
+      });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/tickets/:ticketId/comments
+// Public Comment
+// ---------------------------------------------------------------------------
+//
+// Requester:
+// - Must be authenticated.
+// - Can comment only on their own ticket.
+//
+// IT Staff / Admin:
+// - Can add a public comment.
+//
+// Author identity always comes from the authenticated session.
+// The request body must not be trusted for authorId.
+//
+// Comments are append-only. There is intentionally no edit/delete
+// endpoint for public comments in Lab 3.
+// ---------------------------------------------------------------------------
+
+app.post(
+  "/api/tickets/:ticketId/comments",
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      // ---------------------------------------------------------------------
+      // Authentication
+      // ---------------------------------------------------------------------
+
+      const sessionUserId =
+        req.session.userId;
+
+      if (!sessionUserId) {
+        return res.status(401).json({
+          error: "UNAUTHENTICATED",
+          message: "You must be logged in.",
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // Validate ticket ID
+      // ---------------------------------------------------------------------
+
+      const ticketId =
+        Number(req.params.ticketId);
+
+      if (
+        !Number.isInteger(ticketId) ||
+        ticketId < 1
+      ) {
+        return res.status(404).json({
+          error: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // Find authenticated user
+      // ---------------------------------------------------------------------
+
+      const user =
+        await getPrisma().user.findUnique({
+          where: {
+            id: sessionUserId,
+          },
+
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+            role: true,
+            isActive: true,
+
+            requester: {
+              select: {
+                id: true,
+                isActive: true,
+              },
+            },
+          },
+        });
+
+      if (!user || !user.isActive) {
+        return res.status(401).json({
+          error: "UNAUTHENTICATED",
+          message: "You must be logged in.",
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // Find ticket
+      // ---------------------------------------------------------------------
+
+      const ticket =
+        await getPrisma().ticket.findUnique({
+          where: {
+            id: ticketId,
+          },
+
+          select: {
+            id: true,
+            requesterId: true,
+          },
+        });
+
+      if (!ticket) {
+        return res.status(404).json({
+          error: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // Authorization
+      // ---------------------------------------------------------------------
+
+      if (user.role === Role.REQUESTER) {
+        if (
+          !user.requester ||
+          !user.requester.isActive
+        ) {
+          return res.status(401).json({
+            error: "UNAUTHENTICATED",
+            message: "You must be logged in.",
+          });
+        }
+
+        if (
+          user.requester.id !==
+          ticket.requesterId
+        ) {
+          return res.status(403).json({
+            error: "FORBIDDEN",
+            message:
+              "You do not have permission to comment on this ticket.",
+          });
+        }
+      } else if (
+        user.role !== Role.IT_STAFF &&
+        user.role !== Role.ADMIN
+      ) {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message:
+            "You do not have permission to comment on this ticket.",
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // Validate comment body
+      // ---------------------------------------------------------------------
+
+      const body =
+        typeof req.body?.body === "string"
+          ? req.body.body.trim()
+          : "";
+
+      if (body.length === 0) {
+        return res.status(400).json({
+          error: "INVALID_COMMENT",
+          message:
+            "Comment body cannot be empty.",
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // Create public comment
+      //
+      // authorId comes from the authenticated session.
+      // Any authorId supplied by the client is intentionally ignored.
+      // ---------------------------------------------------------------------
+
+      const message =
+        await getPrisma().ticketMessage.create({
+          data: {
+            ticketId,
+            authorId: sessionUserId,
+            type: "COMMENT",
+            body,
+          },
+
+          select: {
+            id: true,
+            ticketId: true,
+            type: true,
+            body: true,
+            createdAt: true,
+            updatedAt: true,
+
+            author: {
+              select: {
+                id: true,
+                displayName: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        });
+
+      return res.status(201).json({
+        message,
+      });
+    } catch (error) {
+      console.error(
+        "POST /api/tickets/:ticketId/comments failed:",
+        error,
+      );
+
+      return res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: "Unable to create public comment.",
       });
     }
   },
@@ -2122,4 +2338,3 @@ app.use(
 // ---------------------------------------------------------------------------
 
 export default app;
-
