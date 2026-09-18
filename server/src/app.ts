@@ -145,6 +145,211 @@ app.get(
 );
 
 // ---------------------------------------------------------------------------
+// GET /api/it/tickets/:id
+// IT Staff Ticket Detail
+// ---------------------------------------------------------------------------
+//
+// This endpoint is separate from the existing requester ticket-detail API:
+// GET /api/tickets/:id
+//
+// IT Staff and Admin users can view the ticket detail.
+// Requester users are rejected by requireRole.
+// ---------------------------------------------------------------------------
+
+app.get(
+  "/api/it/tickets/:id",
+  requireRole(Role.IT_STAFF, Role.ADMIN),
+  async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      const ticketId = Number(req.params.id);
+
+      if (
+        !Number.isInteger(ticketId) ||
+        ticketId < 1
+      ) {
+        return res.status(404).json({
+          error: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        });
+      }
+
+      const ticket =
+        await getPrisma().ticket.findUnique({
+          where: {
+            id: ticketId,
+          },
+
+          select: {
+            id: true,
+            ticketNumber: true,
+            requesterId: true,
+            categoryId: true,
+            relatedSystemId: true,
+            ownerId: true,
+            summary: true,
+            description: true,
+            requestedPriority: true,
+            itPriority: true,
+            currentStatus: true,
+            createdAt: true,
+            updatedAt: true,
+
+            requester: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                isActive: true,
+              },
+            },
+
+            category: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+
+            relatedSystem: {
+              select: {
+                id: true,
+                name: true,
+                isActive: true,
+              },
+            },
+
+            owner: {
+              select: {
+                id: true,
+                displayName: true,
+                email: true,
+              },
+            },
+
+            messages: {
+              select: {
+                id: true,
+                type: true,
+                body: true,
+                createdAt: true,
+                updatedAt: true,
+
+                author: {
+                  select: {
+                    id: true,
+                    displayName: true,
+                    email: true,
+                    role: true,
+                  },
+                },
+              },
+
+              orderBy: {
+                createdAt: "asc",
+              },
+            },
+
+            attachments: {
+              select: {
+                id: true,
+                originalFilename: true,
+                mimeType: true,
+                sizeBytes: true,
+                uploadedAt: true,
+                isRemoved: true,
+                removedAt: true,
+                removalReason: true,
+              },
+
+              orderBy: {
+                uploadedAt: "asc",
+              },
+            },
+          },
+        });
+
+      if (!ticket) {
+        return res.status(404).json({
+          error: "TICKET_NOT_FOUND",
+          message: "Ticket not found.",
+        });
+      }
+
+      return res.status(200).json({
+        id: ticket.id,
+        ticketNumber:
+          ticket.ticketNumber,
+        requesterId:
+          ticket.requesterId,
+        requester:
+          ticket.requester,
+        requesterName: ticket.requester.name,
+
+
+        categoryId:
+          ticket.categoryId,
+        category:
+          ticket.category,
+        categoryName: ticket.category.name,
+
+
+        relatedSystemId:
+          ticket.relatedSystemId,
+        relatedSystem:
+          ticket.relatedSystem,
+        relatedSystemName: ticket.relatedSystem.name,
+
+        ownerId:
+          ticket.ownerId,
+
+        owner:
+          ticket.owner,
+
+        summary:
+          ticket.summary,
+
+        description:
+          ticket.description,
+
+        requestedPriority:
+          ticket.requestedPriority,
+
+        itPriority:
+          ticket.itPriority,
+
+        currentStatus:
+          ticket.currentStatus,
+
+        createdAt:
+          ticket.createdAt,
+
+        updatedAt:
+          ticket.updatedAt,
+
+        messages:
+          ticket.messages,
+
+        attachments:
+          ticket.attachments,
+      });
+    } catch (error) {
+      console.error(
+        "GET /api/it/tickets/:id failed:",
+        error,
+      );
+
+      return res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: "Unable to retrieve IT Staff ticket detail.",
+      });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Attachment upload configuration
 // ---------------------------------------------------------------------------
 
@@ -1917,3 +2122,4 @@ app.use(
 // ---------------------------------------------------------------------------
 
 export default app;
+
