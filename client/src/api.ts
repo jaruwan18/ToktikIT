@@ -393,3 +393,238 @@ export async function removeAttachment(
 
   return response.json();
 }
+
+// ---------------------------------------------------------------------------
+// Lab 3 - Administrator User Management
+// ---------------------------------------------------------------------------
+
+export type UserRole =
+  | "REQUESTER"
+  | "IT_STAFF"
+  | "ADMIN";
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  mustChangePassword: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminUserListResponse {
+  users: AdminUser[];
+}
+
+export interface CreateAdminUserInput {
+  displayName: string;
+  email: string;
+  role: UserRole;
+  password: string;
+}
+
+export interface UpdateAdminUserInput {
+  displayName?: string;
+  email?: string;
+  role?: UserRole;
+  isActive?: boolean;
+}
+
+export interface SetInitialPasswordInput {
+  password: string;
+}
+
+interface ApiErrorResponse {
+  error?: string;
+  message?: string;
+  fields?: Record<string, string>;
+}
+
+async function getApiErrorMessage(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  try {
+    const errorData =
+      (await response.json()) as ApiErrorResponse;
+
+    if (
+      errorData.fields &&
+      Object.keys(errorData.fields).length > 0
+    ) {
+      return Object.values(errorData.fields).join(" ");
+    }
+
+    if (typeof errorData.message === "string") {
+      return errorData.message;
+    }
+
+    if (typeof errorData.error === "string") {
+      return errorData.error;
+    }
+  } catch {
+    // Keep fallback when the response is not JSON.
+  }
+
+  return fallback;
+}
+
+export async function getAdminUsers(
+  search = "",
+): Promise<AdminUserListResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (search.trim()) {
+    searchParams.set("search", search.trim());
+  }
+
+  const query = searchParams.toString();
+
+  const response = await fetch(
+    `${API_URL}/api/admin/users${query ? `?${query}` : ""}`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to retrieve users.",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
+export async function createAdminUser(
+  input: CreateAdminUserInput,
+): Promise<AdminUser> {
+  const response = await fetch(
+    `${API_URL}/api/admin/users`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to create user.",
+      ),
+    );
+  }
+
+  const data = (await response.json()) as {
+    user: AdminUser;
+  };
+
+  return data.user;
+}
+
+export async function updateAdminUser(
+  userId: number,
+  input: UpdateAdminUserInput,
+): Promise<AdminUser> {
+  const response = await fetch(
+    `${API_URL}/api/admin/users/${userId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to update user.",
+      ),
+    );
+  }
+
+  const data = (await response.json()) as {
+    user: AdminUser;
+  };
+
+  return data.user;
+}
+
+export async function setAdminUserInitialPassword(
+  userId: number,
+  input: SetInitialPasswordInput,
+): Promise<AdminUser> {
+  const response = await fetch(
+    `${API_URL}/api/admin/users/${userId}/initial-password`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to set initial password.",
+      ),
+    );
+  }
+
+  const data = (await response.json()) as {
+    user: AdminUser;
+  };
+
+  return data.user;
+}
+
+export interface CurrentUser {
+  id: number;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  mustChangePassword: boolean;
+  isActive: boolean;
+}
+
+export async function getCurrentUser(): Promise<CurrentUser> {
+  const response = await fetch(
+    `${API_URL}/api/auth/me`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "You must be logged in.",
+      ),
+    );
+  }
+
+  const data = (await response.json()) as {
+    user: CurrentUser;
+  };
+
+  return data.user;
+}

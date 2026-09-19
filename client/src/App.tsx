@@ -17,9 +17,10 @@ import {
   type RequestedPriority,
 } from "./api.js";
 
+import AdminUserManagement from "./components/AdminUserManagement.js";
 type Priority = "" | RequestedPriority;
 type Status = "" | "NEW";
-type Screen = "my-tickets" | "create-ticket" | "ticket-detail";
+type Screen = "my-tickets" | "create-ticket" | "ticket-detail" | "admin-users";
 
 interface TicketDetail {
   id: number;
@@ -853,6 +854,17 @@ export default function App() {
                 >
                   Create Ticket
                 </button>
+
+                <button
+                  type="button"
+                  className={`header-nav-button ${
+                    screen === "admin-users" ? "active" : ""
+                 }`}
+                 onClick={() => setScreen("admin-users")}
+                >
+                 User Management
+               </button>
+
               </nav>
 
               <div className="small text-end">
@@ -945,6 +957,8 @@ export default function App() {
               </p>
             </div>
           </section>
+        ) : screen === "admin-users" ? (
+          <AdminUserManagement />
         ) : screen === "ticket-detail" ? (
           <section>
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">

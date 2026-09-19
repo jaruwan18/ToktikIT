@@ -718,3 +718,117 @@ textarea.form-control {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Lab 3 - Administrator User Management                                     */
+/* -------------------------------------------------------------------------- */
+
+.status-active {
+  background: var(--pale-green);
+  color: var(--primary);
+}
+
+.status-inactive {
+  background: var(--error-background);
+  color: var(--error);
+}
+
+.admin-role-badge {
+  background: #e8f0ff;
+  color: #315b9a;
+}
+
+.staff-role-badge {
+  background: #eee9f8;
+  color: #68489b;
+}
+
+.requester-role-badge {
+  background: #eef5f1;
+  color: var(--primary);
+}
+
+/* Admin modal */
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(31, 42, 36, 0.45);
+  overflow-y: auto;
+}
+
+.admin-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid #dfe7e2;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(31, 42, 36, 0.2);
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5ebe8;
+}
+
+.admin-modal-body {
+  padding: 24px;
+}
+
+.admin-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5ebe8;
+}
+
+/* Admin table */
+
+.admin-user-table {
+  min-width: 900px;
+}
+
+.admin-user-table th {
+  white-space: nowrap;
+}
+
+/* Mobile */
+
+@media (max-width: 767.98px) {
+  .admin-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .admin-modal {
+    max-height: 92vh;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .admin-modal-header,
+  .admin-modal-body,
+  .admin-modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .admin-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .admin-modal-footer .btn {
+    width: 100%;
+  }
+}
