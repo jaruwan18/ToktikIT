@@ -17,6 +17,7 @@ describe("Lab 3 - Administrator User Management UI", () => {
       email: "admin@example.com",
       displayName: "System Administrator",
       role: "ADMIN",
+      mustChangePassword: false,
       isActive: true,
     });
 
@@ -500,6 +501,7 @@ describe("Lab 3 - Administrator User Management UI", () => {
       email: "admin@example.com",
       displayName: "System Administrator",
       role: "ADMIN",
+      mustChangePassword: false,
       isActive: true,
     });
 
