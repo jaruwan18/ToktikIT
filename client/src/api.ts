@@ -129,6 +129,53 @@ export interface TicketDetail {
   attachments?: TicketAttachment[];
 }
 
+export interface ItTicketDetail {
+  id: number;
+  ticketNumber: string;
+  requesterId: number;
+  requester: {
+    id: number;
+    name: string;
+    email: string;
+    isActive: boolean;
+  };
+  requesterName: string;
+  categoryId: number;
+  category: Category;
+  categoryName: string;
+  relatedSystemId: number;
+  relatedSystem: RelatedSystem;
+  relatedSystemName: string;
+  ownerId: number | null;
+  owner: {
+    id: number;
+    displayName: string;
+    email: string;
+  } | null;
+  summary: string;
+  description: string;
+  requestedPriority: RequestedPriority;
+  itPriority: ItPriority;
+  currentStatus: CurrentStatus;
+  createdAt: string;
+  updatedAt: string;
+  messages: {
+    id: number;
+    type: string;
+    body: string;
+    createdAt: string;
+    updatedAt: string;
+    author: {
+      id: number;
+      displayName: string;
+      email: string;
+      role: string;
+    };
+  }[];
+  attachments: TicketAttachment[];
+}
+
+
 export interface LoginResponse {
   user: CurrentUser;
 }
@@ -417,6 +464,35 @@ export async function getTicketDetail(
 
   return response.json();
 }
+
+export async function getItTicketDetail(
+  ticketId: number,
+): Promise<ItTicketDetail> {
+  const response = await fetch(
+    `${API_URL}/api/it/tickets/${ticketId}`,
+  );
+
+  if (!response.ok) {
+    let message = "Unable to retrieve IT Staff ticket detail.";
+
+    try {
+      const errorData = await response.json();
+
+      if (typeof errorData?.message === "string") {
+        message = errorData.message;
+      } else if (typeof errorData?.error === "string") {
+        message = errorData.error;
+      }
+    } catch {
+      // Keep the default message when the response is not JSON.
+    }
+
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
 
 export async function uploadAttachment(
   requesterId: number,
