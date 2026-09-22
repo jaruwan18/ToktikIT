@@ -17,6 +17,20 @@ export interface Requester {
   isActive: boolean;
 }
 
+export type UserRole =
+  | "REQUESTER"
+  | "IT_STAFF"
+  | "ADMIN";
+
+export interface CurrentUser {
+  id: number;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  mustChangePassword: boolean;
+  isActive: boolean;
+}
+
 export interface SystemStatus {
   online: boolean;
   categories: Category[];
@@ -114,6 +128,121 @@ export interface TicketDetail {
   updatedAt: string;
   attachments?: TicketAttachment[];
 }
+
+export interface LoginResponse {
+  user: CurrentUser;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3 - Authentication
+// ---------------------------------------------------------------------------
+
+export async function login(
+  email: string,
+  password: string,
+): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Invalid email or password",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
+export async function logout(): Promise<void> {
+  const response = await fetch(`${API_URL}/api/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to log out.",
+      ),
+    );
+  }
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordResponse> {
+  const response = await fetch(
+    `${API_URL}/api/auth/change-password`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to change password.",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
+export async function getCurrentUser(): Promise<CurrentUser> {
+  const response = await fetch(
+    `${API_URL}/api/auth/me`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "You must be logged in.",
+      ),
+    );
+  }
+
+  const data = (await response.json()) as {
+    user: CurrentUser;
+  };
+
+  return data.user;
+}
+
+// ---------------------------------------------------------------------------
+// Existing Lab 1 / Lab 2 API
+// ---------------------------------------------------------------------------
 
 export async function checkSystem(): Promise<SystemStatus> {
   const healthRes = await fetch(`${API_URL}/api/health`);
@@ -219,7 +348,10 @@ export async function getTickets(
   }
 
   if (params.requestedPriority) {
-    searchParams.set("requestedPriority", params.requestedPriority);
+    searchParams.set(
+      "requestedPriority",
+      params.requestedPriority,
+    );
   }
 
   if (params.currentStatus) {
@@ -258,6 +390,7 @@ export async function getTicketDetail(
   ticketId: number,
 ): Promise<TicketDetail> {
   const searchParams = new URLSearchParams();
+
   searchParams.set("requesterId", String(requesterId));
 
   const response = await fetch(
@@ -291,6 +424,7 @@ export async function uploadAttachment(
   file: File,
 ): Promise<TicketAttachment> {
   const formData = new FormData();
+
   formData.append("file", file);
 
   const response = await fetch(
@@ -309,6 +443,7 @@ export async function uploadAttachment(
 
     try {
       const errorData = await response.json();
+
       if (typeof errorData?.message === "string") {
         message = errorData.message;
       } else if (typeof errorData?.error === "string") {
@@ -342,6 +477,7 @@ export async function downloadAttachment(
 
     try {
       const errorData = await response.json();
+
       if (typeof errorData?.message === "string") {
         message = errorData.message;
       } else if (typeof errorData?.error === "string") {
@@ -379,6 +515,7 @@ export async function removeAttachment(
 
     try {
       const errorData = await response.json();
+
       if (typeof errorData?.message === "string") {
         message = errorData.message;
       } else if (typeof errorData?.error === "string") {
@@ -397,11 +534,6 @@ export async function removeAttachment(
 // ---------------------------------------------------------------------------
 // Lab 3 - Administrator User Management
 // ---------------------------------------------------------------------------
-
-export type UserRole =
-  | "REQUESTER"
-  | "IT_STAFF"
-  | "ADMIN";
 
 export interface AdminUser {
   id: number;
@@ -591,39 +723,6 @@ export async function setAdminUserInitialPassword(
 
   const data = (await response.json()) as {
     user: AdminUser;
-  };
-
-  return data.user;
-}
-
-export interface CurrentUser {
-  id: number;
-  email: string;
-  displayName: string;
-  role: UserRole;
-  mustChangePassword: boolean;
-  isActive: boolean;
-}
-
-export async function getCurrentUser(): Promise<CurrentUser> {
-  const response = await fetch(
-    `${API_URL}/api/auth/me`,
-    {
-      credentials: "include",
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      await getApiErrorMessage(
-        response,
-        "You must be logged in.",
-      ),
-    );
-  }
-
-  const data = (await response.json()) as {
-    user: CurrentUser;
   };
 
   return data.user;

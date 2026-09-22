@@ -61,7 +61,6 @@ authRouter.post(
       }
 
       const normalizedEmail = email.trim().toLowerCase();
-
       const user = await getPrisma().user.findUnique({
         where: {
           email: normalizedEmail,

@@ -9,13 +9,19 @@ import {
   uploadAttachment,
   downloadAttachment,
   removeAttachment,
+  getCurrentUser,
+  logout,
   type Category,
   type RelatedSystem,
   type Requester,
   type TicketListItem,
   type TicketListParams,
   type RequestedPriority,
+  type CurrentUser,
 } from "./api.js";
+import Login from "./components/Login.js";
+import ChangePassword from "./components/ChangePassword.js";
+
 
 import AdminUserManagement from "./components/AdminUserManagement.js";
 type Priority = "" | RequestedPriority;
@@ -80,7 +86,37 @@ export default function App() {
   const [requesterError, setRequesterError] = useState("");
 
   const [screen, setScreen] = useState<Screen>("my-tickets");
+    const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+    const [authLoading, setAuthLoading] = useState(true);
+    useEffect(() => {
+  let mounted = true;
 
+  const loadCurrentUser = async () => {
+    try {
+      const response = await getCurrentUser();
+
+      if (mounted) {
+        setCurrentUser(response.user);
+      }
+    } catch {
+      if (mounted) {
+        setCurrentUser(null);
+      }
+    } finally {
+      if (mounted) {
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  void loadCurrentUser();
+
+  return () => {
+    mounted = false;
+  };
+}, []);
+
+ 
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
   const [selectedTicket, setSelectedTicket] =
     useState<TicketDetail | null>(null);
@@ -809,6 +845,41 @@ export default function App() {
     page * pageSize,
     totalItems,
   );
+ if (authLoading) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center">
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <div className="mt-2">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <Login
+        onLogin={(user) => {
+          setCurrentUser(user);
+        }}
+      />
+    );
+  }
+
+  if (currentUser.mustChangePassword) {
+  return (
+    <ChangePassword
+      onPasswordChanged={() => {
+        setCurrentUser({
+          ...currentUser,
+          mustChangePassword: false,
+        });
+      }}
+    />
+  );
+}
 
   return (
     <div className="min-vh-100">
@@ -867,47 +938,29 @@ export default function App() {
 
               </nav>
 
-              <div className="small text-end">
-                <label
-                  htmlFor="requester-selector"
-                  className="form-label mb-1 text-white"
-                >
-                  Requester
-                </label>
-
-                <select
-                  id="requester-selector"
-                  className="form-select form-select-sm"
-                  value={
-                    requesterId === null
-                      ? ""
-                      : String(requesterId)
-                  }
-                  onChange={(event) =>
-                    handleRequesterChange(
-                      event.target.value,
-                    )
-                  }
-                  disabled={requesterLoading}
-                  aria-label="Select requester"
-                >
-                  <option value="">
-                    Select requester
-                  </option>
-
-                  {requesters.map((requester) => (
-                    <option
-                      key={requester.id}
-                      value={requester.id}
-                    >
-                      {requester.name}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="opacity-75 mt-1">
-                  Lab 2 testing requester
+              <div className="d-flex align-items-center gap-2">
+                <div className="text-end">
+                  <div className="fw-semibold">
+                    {currentUser.displayName}"
+                  </div>
+                  <div className="small opacity-75">
+                    {currentUser.role}
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-light btn-sm"
+                  onClick={async () => {
+                    try {
+                      await logout();
+                    } finally {
+                      setCurrentUser(null);
+                    }
+                  }}
+                >
+                  Logout
+                </button>
               </div>
             </div>
           </div>
