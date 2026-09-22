@@ -1100,43 +1100,61 @@ app.post(
   "/api/tickets",
   async (req: Request, res: Response) => {
     try {
-      const requesterIdHeader =
-        req.header("X-Requester-Id");
+      // ---------------------------------------------------------------------
+      // Authentication
+      // The requester identity must come from the authenticated session.
+      // Do not trust X-Requester-Id or requesterId from the request body.
+      // ---------------------------------------------------------------------
 
-      const requesterId =
-        Number(requesterIdHeader);
+      const sessionUserId =
+        req.session.userId;
 
-      if (
-        !requesterIdHeader ||
-        !Number.isInteger(requesterId) ||
-        requesterId < 1
-      ) {
-        return res.status(400).json({
-          error: "INVALID_REQUESTER",
-          message:
-            "A valid, active Requester identity is required.",
+      if (!sessionUserId) {
+        return res.status(401).json({
+          error: "UNAUTHENTICATED",
+          message: "You must be logged in.",
         });
       }
 
-      const requester =
-        await getPrisma().requester.findFirst({
+      const user =
+        await getPrisma().user.findUnique({
           where: {
-            id: requesterId,
-            isActive: true,
+            id: sessionUserId,
           },
 
           select: {
             id: true,
+            isActive: true,
+
+            requester: {
+              select: {
+                id: true,
+                isActive: true,
+              },
+            },
           },
         });
 
-      if (!requester) {
-        return res.status(400).json({
-          error: "INVALID_REQUESTER",
-          message:
-            "A valid, active Requester identity is required.",
+      if (!user || !user.isActive) {
+        return res.status(401).json({
+          error: "UNAUTHENTICATED",
+          message: "You must be logged in.",
         });
       }
+
+      if (
+        !user.requester ||
+        !user.requester.isActive
+      ) {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message:
+            "You do not have permission to create requester tickets.",
+        });
+      }
+
+      const requesterId =
+        user.requester.id;
 
       const {
         categoryId,
@@ -1358,49 +1376,65 @@ app.get(
   "/api/tickets",
   async (req: Request, res: Response) => {
     try {
-      if (!req.query.requesterId) {
-        return res.status(400).json({
-          error: {
-            code: "INVALID_REQUESTER",
-            message: "requesterId is required.",
+      // ---------------------------------------------------------------------
+      // Authentication
+      // ---------------------------------------------------------------------
+
+      const sessionUserId =
+        req.session.userId;
+
+      if (!sessionUserId) {
+        return res.status(401).json({
+          error: "UNAUTHENTICATED",
+          message: "You must be logged in.",
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // Find authenticated user and requester
+      // ---------------------------------------------------------------------
+
+      const prisma = getPrisma();
+
+      const user =
+        await prisma.user.findUnique({
+          where: {
+            id: sessionUserId,
           },
+
+          select: {
+            id: true,
+            isActive: true,
+
+            requester: {
+              select: {
+                id: true,
+                isActive: true,
+              },
+            },
+          },
+        });
+
+      if (!user || !user.isActive) {
+        return res.status(401).json({
+          error: "UNAUTHENTICATED",
+          message: "You must be logged in.",
+        });
+      }
+
+      if (
+        !user.requester ||
+        !user.requester.isActive
+      ) {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message:
+            "You do not have permission to access requester tickets.",
         });
       }
 
       const requesterId =
-        Number(req.query.requesterId);
-
-      if (
-        !Number.isInteger(requesterId) ||
-        requesterId <= 0
-      ) {
-        return res.status(400).json({
-          error: {
-            code: "INVALID_REQUESTER",
-            message:
-              "requesterId must be a valid integer.",
-          },
-        });
-      }
-
-      const prisma = getPrisma();
-
-      const requester =
-        await prisma.requester.findFirst({
-          where: {
-            id: requesterId,
-            isActive: true,
-          },
-        });
-
-      if (!requester) {
-        return res.status(404).json({
-          error: {
-            code: "REQUESTER_NOT_FOUND",
-            message: "Requester not found.",
-          },
-        });
-      }
+        user.requester.id;
 
       const pageValue =
         Number(req.query.page);
