@@ -37,7 +37,15 @@ export interface SystemStatus {
 }
 
 export type RequestedPriority = "LOW" | "MEDIUM" | "HIGH";
-export type CurrentStatus = "NEW";
+export type CurrentStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
 
 export interface TicketListItem {
   id: number;
@@ -49,6 +57,50 @@ export interface TicketListItem {
   currentStatus: CurrentStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export type ItPriority = "LOW" | "MEDIUM" | "HIGH";
+
+export interface ItTicketListItem {
+  id: number;
+  ticketNumber: string;
+  requesterId: number;
+  categoryId: number;
+  relatedSystemId: number;
+  ownerId: number | null;
+  summary: string;
+  description: string;
+  requestedPriority: RequestedPriority;
+  itPriority: ItPriority;
+  currentStatus: CurrentStatus;
+  createdAt: string;
+  updatedAt: string;
+  requester?: Requester;
+  category?: Category;
+  relatedSystem?: RelatedSystem;
+  owner?: {
+    id: number;
+    displayName: string;
+    email: string;
+  } | null;
+}
+
+export interface ItTicketListResponse {
+  data: ItTicketListItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface ItTicketListParams {
+  search?: string;
+  currentStatus?: CurrentStatus;
+  itPriority?: ItPriority;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface TicketPagination {
@@ -385,6 +437,43 @@ export async function getTickets(
   return response.json();
 }
 
+export async function getItTickets(
+  params: ItTicketListParams = {},
+): Promise<ItTicketListResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (params.search?.trim()) {
+    searchParams.set("search", params.search.trim());
+  }
+
+  if (params.currentStatus) {
+    searchParams.set("currentStatus", params.currentStatus);
+  }
+
+  if (params.itPriority) {
+    searchParams.set("itPriority", params.itPriority);
+  }
+
+  if (params.page !== undefined) {
+    searchParams.set("page", String(params.page));
+  }
+
+  if (params.pageSize !== undefined) {
+    searchParams.set("pageSize", String(params.pageSize));
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/it/tickets?${searchParams.toString()}`,
+  );
+
+  if (!response.ok) {
+    throw new Error("Unable to retrieve IT tickets.");
+  }
+
+  return response.json();
+}
+
+
 export async function getTicketDetail(
   requesterId: number,
   ticketId: number,
@@ -547,7 +636,13 @@ export interface AdminUser {
 }
 
 export interface AdminUserListResponse {
-  users: AdminUser[];
+  data: AdminUser[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export interface CreateAdminUserInput {

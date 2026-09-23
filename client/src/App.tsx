@@ -17,16 +17,24 @@ import {
   type TicketListItem,
   type TicketListParams,
   type RequestedPriority,
+  type CurrentStatus,
   type CurrentUser,
 } from "./api.js";
 import Login from "./components/Login.js";
 import ChangePassword from "./components/ChangePassword.js";
 
-
 import AdminUserManagement from "./components/AdminUserManagement.js";
+import StaffTicketQueue from "./components/StaffTicketQueue.js";
+
 type Priority = "" | RequestedPriority;
 type Status = "" | "NEW";
-type Screen = "my-tickets" | "create-ticket" | "ticket-detail" | "admin-users";
+type Screen =
+  | "my-tickets"
+  | "create-ticket"
+  | "ticket-detail"
+  | "admin-users"
+  | "staff-queue";
+
 
 interface TicketDetail {
   id: number;
@@ -39,7 +47,7 @@ interface TicketDetail {
   summary: string;
   description: string;
   requestedPriority: RequestedPriority;
-  currentStatus: "NEW";
+  currentStatus: CurrentStatus;
   createdAt: string;
   updatedAt: string;
   attachments?: TicketAttachment[];
@@ -85,8 +93,20 @@ export default function App() {
   const [requesterLoading, setRequesterLoading] = useState(true);
   const [requesterError, setRequesterError] = useState("");
 
-  const [screen, setScreen] = useState<Screen>("my-tickets");
-    const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [currentUser, setCurrentUser] =
+    useState<CurrentUser | null>(null);
+
+  const [screen, setScreen] =
+    useState<Screen>("my-tickets");
+
+  useEffect(() => {
+    if (
+      currentUser?.role === "IT_STAFF" &&
+      screen === "my-tickets"
+    ) {
+      setScreen("staff-queue");
+    }
+  }, [currentUser, screen]);
     const [authLoading, setAuthLoading] = useState(true);
     useEffect(() => {
   let mounted = true;
@@ -96,7 +116,7 @@ export default function App() {
       const response = await getCurrentUser();
 
       if (mounted) {
-        setCurrentUser(response.user);
+        setCurrentUser(response);
       }
     } catch {
       if (mounted) {
@@ -862,7 +882,10 @@ export default function App() {
     return (
       <Login
         onLogin={(user) => {
-          setCurrentUser(user);
+          setCurrentUser({
+            ...user,
+            role: user.role as CurrentUser["role"],
+          });
         }}
       />
     );
@@ -910,6 +933,19 @@ export default function App() {
                   My Tickets
                 </button>
 
+                {(currentUser.role === "IT_STAFF" ||
+                  currentUser.role === "ADMIN") && (
+                  <button
+                    type="button"
+                    className={`header-nav-button ${
+                      screen === "staff-queue" ? "active" : ""
+                    }`}
+                    onClick={() => setScreen("staff-queue")}
+               >
+                    IT Ticket Queue
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className={`header-nav-button ${
@@ -925,7 +961,8 @@ export default function App() {
                 >
                   Create Ticket
                 </button>
-
+     
+              {currentUser.role === "ADMIN" && (
                 <button
                   type="button"
                   className={`header-nav-button ${
@@ -935,13 +972,13 @@ export default function App() {
                 >
                  User Management
                </button>
-
+              )}
               </nav>
 
               <div className="d-flex align-items-center gap-2">
                 <div className="text-end">
                   <div className="fw-semibold">
-                    {currentUser.displayName}"
+                    {currentUser.displayName}
                   </div>
                   <div className="small opacity-75">
                     {currentUser.role}
@@ -968,7 +1005,15 @@ export default function App() {
       </header>
 
       <main className="container app-main">
-        {requesterLoading ? (
+        {(currentUser.role === "IT_STAFF" ||
+          currentUser.role === "ADMIN") &&
+        screen === "staff-queue" ? (
+          <StaffTicketQueue
+            onOpenTicket={(ticketId) => {
+              setSelectedTicketId(ticketId);
+            }}
+           />
+         ) : requesterLoading ? (
           <section className="zen-card shadow-sm">
             <div className="card-body p-4 text-center text-muted">
               Loading requesters...
