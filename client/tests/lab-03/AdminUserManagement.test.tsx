@@ -19,6 +19,7 @@ describe("Lab 3 - Administrator User Management UI", () => {
       role: "ADMIN",
       mustChangePassword: false,
       isActive: true,
+      requesterId: null,
     });
 
     vi.spyOn(api, "getAdminUsers").mockResolvedValue({
@@ -503,6 +504,7 @@ describe("Lab 3 - Administrator User Management UI", () => {
       role: "ADMIN",
       mustChangePassword: false,
       isActive: true,
+      requesterId: null,
     });
 
     vi.spyOn(api, "getAdminUsers").mockRejectedValue(

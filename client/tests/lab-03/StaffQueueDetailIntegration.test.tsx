@@ -90,6 +90,7 @@ describe("Lab 3 - Staff Queue to Ticket Detail Integration", () => {
       role: "IT_STAFF",
       mustChangePassword: false,
       isActive: true,
+        requesterId: null,
     });
   });
 

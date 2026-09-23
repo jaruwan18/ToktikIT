@@ -3,7 +3,6 @@ import {
   createTicket,
   getCategories,
   getRelatedSystems,
-  getRequesters,
   getTickets,
   getTicketDetail,
   uploadAttachment,
@@ -13,7 +12,6 @@ import {
   logout,
   type Category,
   type RelatedSystem,
-  type Requester,
   type TicketListItem,
   type TicketListParams,
   type RequestedPriority,
@@ -86,17 +84,12 @@ interface CreateFormErrors {
 }
 
 export default function App() {
-  /*
-   * Lab 2 temporary requester selector.
-   * Authentication is intentionally excluded from this lab.
-   */
-  const [requesters, setRequesters] = useState<Requester[]>([]);
-  const [requesterId, setRequesterId] = useState<number | null>(null);
-  const [requesterLoading, setRequesterLoading] = useState(true);
-  const [requesterError, setRequesterError] = useState("");
+ 
 
   const [currentUser, setCurrentUser] =
     useState<CurrentUser | null>(null);
+
+  const requesterId = currentUser?.requesterId ?? null;
 
   const [screen, setScreen] =
     useState<Screen>("my-tickets");
@@ -189,14 +182,6 @@ export default function App() {
   const [createdTicketNumber, setCreatedTicketNumber] =
     useState("");
 
-  const selectedRequester =
-    requesterId === null
-      ? null
-      : requesters.find((requester) => requester.id === requesterId) ??
-        null;
-
-  const requesterName =
-    selectedRequester?.name ?? "No requester selected";
 
   const hasActiveFilters =
     search.trim() !== "" ||
@@ -204,72 +189,6 @@ export default function App() {
     requestedPriority !== "" ||
     currentStatus !== "";
 
-  /*
-   * Load the temporary Lab 2 requester selector.
-   * Only active requesters are available for selection.
-   */
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRequesters() {
-      setRequesterLoading(true);
-      setRequesterError("");
-
-      try {
-        const response = await getRequesters();
-
-        if (cancelled) {
-          return;
-        }
-
-        const activeRequesters = response.filter(
-          (requester) => requester.isActive,
-        );
-
-        setRequesters(activeRequesters);
-
-        /*
-         * Keep the current requester if it is still active.
-         * Otherwise select the first active requester for the
-         * temporary Lab 2 testing flow.
-         */
-        setRequesterId((currentRequesterId) => {
-          if (
-            currentRequesterId !== null &&
-            activeRequesters.some(
-              (requester) => requester.id === currentRequesterId,
-            )
-          ) {
-            return currentRequesterId;
-          }
-
-          return activeRequesters[0]?.id ?? null;
-        });
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-
-        setRequesters([]);
-        setRequesterId(null);
-        setRequesterError(
-          err instanceof Error
-            ? err.message
-            : "Unable to retrieve requesters.",
-        );
-      } finally {
-        if (!cancelled) {
-          setRequesterLoading(false);
-        }
-      }
-    }
-
-    void loadRequesters();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function loadTickets() {
     if (requesterId === null) {
@@ -339,10 +258,11 @@ export default function App() {
     void loadRelatedSystems();
   }, []);
 
-  /*
-   * Reload My Tickets whenever the selected requester or any
-   * list control changes.
-   */
+ /*
+ * Reload My Tickets whenever the current screen or
+ * any list control changes.
+ */
+
   useEffect(() => {
     if (screen === "my-tickets" && requesterId !== null) {
       void loadTickets();
@@ -359,25 +279,6 @@ export default function App() {
     page,
   ]);
 
-  /*
-   * Changing requester invalidates old ticket/detail data.
-   * This prevents data from the previous requester remaining
-   * visible while the new requester's data is loading.
-   */
-  useEffect(() => {
-    setTickets([]);
-    setTotalItems(0);
-    setTotalPages(0);
-    setPage(1);
-
-    setSelectedTicket(null);
-    setSelectedTicketId(null);
-    setDetailError("");
-    setAttachmentError("");
-    setSelectedFile(null);
-
-    setErrorMessage("");
-  }, [requesterId]);
 
   async function openTicketDetail(ticketId: number) {
     if (requesterId === null) {
@@ -419,32 +320,6 @@ export default function App() {
     setScreen("staff-queue");
   }
 
-  function handleRequesterChange(nextRequesterId: string) {
-    const parsedId = Number(nextRequesterId);
-
-    if (!nextRequesterId || Number.isNaN(parsedId)) {
-      setRequesterId(null);
-      return;
-    }
-
-    if (
-      !requesters.some(
-        (requester) => requester.id === parsedId,
-      )
-    ) {
-      return;
-    }
-
-    setRequesterId(parsedId);
-    setScreen("my-tickets");
-    setSearch("");
-    setCategoryId("");
-    setRequestedPriority("");
-    setCurrentStatus("");
-    setPage(1);
-    setSortBy("createdAt");
-    setSortOrder("desc");
-  }
 
   function backToMyTickets() {
     setSelectedTicket(null);
@@ -818,7 +693,7 @@ export default function App() {
 
     if (requesterId === null) {
       setCreateError(
-        "Please select an active requester before creating a ticket.",
+        "Your account is not linked to an active requester.",
       );
       return;
     }
@@ -971,10 +846,7 @@ export default function App() {
                       : ""
                   }`}
                   onClick={openCreateTicket}
-                  disabled={
-                    requesterLoading ||
-                    requesterId === null
-                  }
+                  disabled={requesterId === null}
                 >
                   Create Ticket
                 </button>
@@ -1037,48 +909,7 @@ export default function App() {
             onOpenTicket={openStaffTicketDetail}
         />
 
-         ) : requesterLoading ? (
-          <section className="zen-card shadow-sm">
-            <div className="card-body p-4 text-center text-muted">
-              Loading requesters...
-            </div>
-          </section>
-        ) : requesterError ? (
-          <section
-            className="zen-alert-error rounded p-4"
-            role="alert"
-          >
-            <div className="fw-semibold mb-1">
-              Unable to load requesters
-            </div>
-            <div>{requesterError}</div>
-          </section>
-        ) : requesters.length === 0 ? (
-          <section className="zen-card shadow-sm">
-            <div className="empty-state">
-              <h1 className="h5">
-                No active requesters available
-              </h1>
 
-              <p className="mb-0">
-                There are currently no active requesters
-                available for Lab 2 testing.
-              </p>
-            </div>
-          </section>
-        ) : requesterId === null ? (
-          <section className="zen-card shadow-sm">
-            <div className="empty-state">
-              <h1 className="h5">
-                Select a requester
-              </h1>
-
-              <p className="mb-0">
-                Please select an active requester to view
-                My Tickets or create a ticket.
-              </p>
-            </div>
-          </section>
         ) : screen === "admin-users" ? (
           <AdminUserManagement />
         ) : screen === "ticket-detail" ? (

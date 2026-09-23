@@ -168,6 +168,11 @@ authRouter.get(
           role: true,
           mustChangePassword: true,
           isActive: true,
+          requester: {
+            select: {
+              id: true,
+           },
+         },
         },
       });
 
@@ -181,7 +186,15 @@ authRouter.get(
       }
 
       return res.status(200).json({
-        user,
+        user: {
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+          role: user.role,
+          mustChangePassword: user.mustChangePassword,
+          isActive: user.isActive,
+          requesterId: user.requester?.id ?? null,
+        },
       });
     } catch (error) {
       console.error(

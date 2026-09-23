@@ -8,6 +8,7 @@ type LoginUser = {
   role: string;
   mustChangePassword: boolean;
   isActive: boolean;
+  requesterId: number | null;
 };
 
 type LoginResponse = {
