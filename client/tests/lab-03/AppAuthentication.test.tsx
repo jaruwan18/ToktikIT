@@ -57,14 +57,12 @@ describe("Lab 3 - Application Authentication Flow", () => {
 
   it("shows the authenticated application after the current user is loaded", async () => {
     vi.mocked(api.getCurrentUser).mockResolvedValue({
-      user: {
-        id: 7,
-        email: "it.alex@example.com",
-        displayName: "Alex Carter",
-        role: "IT_STAFF",
-        mustChangePassword: false,
-        isActive: true,
-      },
+      id: 7,
+      email: "it.alex@example.com",
+      displayName: "Alex Carter",
+      role: "IT_STAFF",
+      mustChangePassword: false,
+      isActive: true,
     });
 
     render(<App />);
@@ -73,9 +71,8 @@ describe("Lab 3 - Application Authentication Flow", () => {
       await screen.findByText(/Alex Carter/i),
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByText(/IT Staff|IT_STAFF/i),
-    ).toBeInTheDocument();
+
+      expect(screen.getByText("IT_STAFF")).toBeInTheDocument();
 
     expect(
       screen.getByRole("button", {
@@ -86,14 +83,12 @@ describe("Lab 3 - Application Authentication Flow", () => {
 
   it("shows the password change screen when mustChangePassword is true", async () => {
     vi.mocked(api.getCurrentUser).mockResolvedValue({
-      user: {
-        id: 7,
-        email: "it.alex@example.com",
-        displayName: "Alex Carter",
-        role: "IT_STAFF",
-        mustChangePassword: true,
-        isActive: true,
-      },
+      id: 7,
+      email: "it.alex@example.com",
+      displayName: "Alex Carter",
+      role: "IT_STAFF",
+      mustChangePassword: true,
+      isActive: true,
     });
 
     render(<App />);
@@ -119,14 +114,12 @@ describe("Lab 3 - Application Authentication Flow", () => {
 
   it("does not show the Lab 2 Development Requester selector", async () => {
     vi.mocked(api.getCurrentUser).mockResolvedValue({
-      user: {
-        id: 7,
-        email: "it.alex@example.com",
-        displayName: "Alex Carter",
-        role: "IT_STAFF",
-        mustChangePassword: false,
-        isActive: true,
-      },
+      id: 7,
+      email: "it.alex@example.com",
+      displayName: "Alex Carter",
+      role: "IT_STAFF",
+      mustChangePassword: false,
+      isActive: true,
     });
 
     render(<App />);
@@ -144,19 +137,15 @@ describe("Lab 3 - Application Authentication Flow", () => {
 
   it("logs out the current user and returns to Login", async () => {
     vi.mocked(api.getCurrentUser).mockResolvedValue({
-      user: {
-        id: 7,
-        email: "it.alex@example.com",
-        displayName: "Alex Carter",
-        role: "IT_STAFF",
-        mustChangePassword: false,
-        isActive: true,
-      },
+      id: 7,
+      email: "it.alex@example.com",
+      displayName: "Alex Carter",
+      role: "IT_STAFF",
+      mustChangePassword: false,
+      isActive: true,
     });
 
-    vi.mocked(api.logout).mockResolvedValue({
-      message: "Logged out successfully.",
-    });
+    vi.mocked(api.logout).mockResolvedValue();
 
     render(<App />);
 
