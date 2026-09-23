@@ -53,6 +53,7 @@ describe("Lab 3 - Login", () => {
       role: "REQUESTER",
       mustChangePassword: false,
       isActive: true,
+      requesterId: null,
     };
 
     vi.mocked(api.login).mockResolvedValue({
@@ -181,6 +182,7 @@ describe("Lab 3 - Login", () => {
         role: "REQUESTER",
         mustChangePassword: false,
         isActive: true,
+        requesterId: null,
       },
     });
   });

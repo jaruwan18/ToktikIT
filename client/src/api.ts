@@ -29,6 +29,7 @@ export interface CurrentUser {
   role: UserRole;
   mustChangePassword: boolean;
   isActive: boolean;
+  requesterId: number | null;
 }
 
 export interface SystemStatus {

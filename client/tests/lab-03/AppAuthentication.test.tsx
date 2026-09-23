@@ -63,6 +63,7 @@ describe("Lab 3 - Application Authentication Flow", () => {
       role: "IT_STAFF",
       mustChangePassword: false,
       isActive: true,
+      requesterId: null,
     });
 
     render(<App />);
@@ -89,6 +90,7 @@ describe("Lab 3 - Application Authentication Flow", () => {
       role: "IT_STAFF",
       mustChangePassword: true,
       isActive: true,
+      requesterId: null,
     });
 
     render(<App />);
@@ -120,6 +122,7 @@ describe("Lab 3 - Application Authentication Flow", () => {
       role: "IT_STAFF",
       mustChangePassword: false,
       isActive: true,
+      requesterId: null,
     });
 
     render(<App />);
@@ -143,6 +146,7 @@ describe("Lab 3 - Application Authentication Flow", () => {
       role: "IT_STAFF",
       mustChangePassword: false,
       isActive: true,
+      requesterId: null,
     });
 
     vi.mocked(api.logout).mockResolvedValue();
