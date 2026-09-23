@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  addInternalNote,
+  addPublicComment,
   getItTicketDetail,
   type ItTicketDetail,
 } from "../api.js";
@@ -41,6 +43,13 @@ export default function StaffTicketDetail({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [messageType, setMessageType] = useState<
+    "COMMENT" | "INTERNAL_NOTE"
+  >("COMMENT");
+  const [messageBody, setMessageBody] = useState("");
+  const [submittingMessage, setSubmittingMessage] =
+    useState(false);
+  const [messageError, setMessageError] = useState("");
 
   async function loadTicket() {
     setLoading(true);
@@ -67,6 +76,53 @@ export default function StaffTicketDetail({
     }
   }
 
+  async function handleSubmitMessage(
+  event: React.FormEvent<HTMLFormElement>,
+) {
+  event.preventDefault();
+
+  const body = messageBody.trim();
+
+  if (!body) {
+    setMessageError("Message cannot be empty.");
+    return;
+  }
+
+  setSubmittingMessage(true);
+  setMessageError("");
+
+  try {
+    const message =
+      messageType === "COMMENT"
+        ? await addPublicComment(ticketId, body)
+        : await addInternalNote(ticketId, body);
+
+    setTicket((currentTicket) => {
+      if (!currentTicket) {
+        return currentTicket;
+      }
+
+      return {
+        ...currentTicket,
+        messages: [
+          ...currentTicket.messages,
+          message,
+        ],
+        updatedAt: message.updatedAt,
+      };
+    });
+
+    setMessageBody("");
+  } catch (err) {
+    setMessageError(
+      err instanceof Error
+        ? err.message
+        : "Unable to send message.",
+    );
+  } finally {
+    setSubmittingMessage(false);
+  }
+}
   useEffect(() => {
     void loadTicket();
   }, [ticketId]);
@@ -250,6 +306,97 @@ export default function StaffTicketDetail({
                 Messages
               </h2>
 
+              <form
+                onSubmit={handleSubmitMessage}
+                className="border rounded p-3 mb-4"
+              >
+                <div className="row g-3">
+                  <div className="col-12 col-md-4">
+                    <label
+                      htmlFor="staff-message-type"
+                      className="form-label"
+                    >
+                      Message Type
+                    </label>
+
+                    <select
+                      id="staff-message-type"
+                      className="form-select"
+                      value={messageType}
+                      onChange={(event) =>
+                        setMessageType(
+                          event.target.value as
+                          | "COMMENT"
+                          | "INTERNAL_NOTE",
+                        )
+                      }
+                      disabled={submittingMessage}
+                    >
+                      <option value="COMMENT">
+                        Public Comment
+                      </option>
+
+                      <option value="INTERNAL_NOTE">
+                        Internal Note
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="col-12">
+                    <label
+                      htmlFor="staff-message-body"
+                      className="form-label"
+                    >
+                      Message
+                    </label>
+
+                    <textarea
+                      id="staff-message-body"
+                      className="form-control"
+                      rows={4}
+                      value={messageBody}
+                      onChange={(event) =>
+                        setMessageBody(event.target.value)
+                      }
+                      placeholder={
+                        messageType === "COMMENT"
+                          ? "Write a public comment..."
+                          : "Write an internal note..."
+                      }
+                      disabled={submittingMessage}
+                    />
+                  </div>
+
+                {messageError ? (
+                  <div className="col-12">
+                    <div
+                      className="alert alert-danger mb-0"
+                      role="alert"
+                    >
+                      {messageError}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="col-12 d-flex justify-content-end">
+                  <button
+                    type="submit"
+                    className="btn btn-success"
+                    disabled={
+                      submittingMessage ||
+                      messageBody.trim().length === 0
+                    }
+                  >
+                    {submittingMessage
+                      ? "Sending..."
+                      : messageType === "COMMENT"
+                        ? "Add Public Comment"
+                        : "Add Internal Note"}
+                  </button>
+                </div>
+              </div>
+            </form>
+
               {ticket.messages.length === 0 ? (
                 <p className="text-muted mb-0">
                   No messages yet.
@@ -277,8 +424,16 @@ export default function StaffTicketDetail({
                         </div>
                       </div>
 
-                      <div className="small text-muted mb-2">
-                        {formatLabel(message.type)}
+                      <div className="small mb-2">
+                        {message.type === "INTERNAL_NOTE" ? (
+                          <span className="badge text-bg-warning">
+                            Internal Note
+                            </span>
+                        ) : (
+                          <span className="badge text-bg-primary">
+                            Public Comment
+                          </span>
+                        )}
                       </div>
 
                       <p className="mb-0 text-break">
