@@ -25,6 +25,7 @@ import ChangePassword from "./components/ChangePassword.js";
 
 import AdminUserManagement from "./components/AdminUserManagement.js";
 import StaffTicketQueue from "./components/StaffTicketQueue.js";
+import StaffTicketDetail from "./components/StaffTicketDetail.js";
 
 type Priority = "" | RequestedPriority;
 type Status = "" | "NEW";
@@ -33,7 +34,8 @@ type Screen =
   | "create-ticket"
   | "ticket-detail"
   | "admin-users"
-  | "staff-queue";
+  | "staff-queue" 
+  | "staff-ticket-detail";
 
 
 interface TicketDetail {
@@ -141,6 +143,8 @@ export default function App() {
   const [selectedTicket, setSelectedTicket] =
     useState<TicketDetail | null>(null);
   const [selectedTicketId, setSelectedTicketId] =
+    useState<number | null>(null);
+  const [staffTicketId, setStaffTicketId] =
     useState<number | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
@@ -403,6 +407,16 @@ export default function App() {
     } finally {
       setDetailLoading(false);
     }
+  }
+
+  function openStaffTicketDetail(ticketId: number) {
+    setStaffTicketId(ticketId);
+    setScreen("staff-ticket-detail");
+  }
+
+  function backToStaffQueue() {
+    setStaffTicketId(null);
+    setScreen("staff-queue");
   }
 
   function handleRequesterChange(nextRequesterId: string) {
@@ -938,7 +952,10 @@ export default function App() {
                   <button
                     type="button"
                     className={`header-nav-button ${
-                      screen === "staff-queue" ? "active" : ""
+                      screen === "staff-queue" ||
+                      screen === "staff-ticket-detail"
+                        ? "active"
+                        : ""
                     }`}
                     onClick={() => setScreen("staff-queue")}
                >
@@ -1007,12 +1024,19 @@ export default function App() {
       <main className="container app-main">
         {(currentUser.role === "IT_STAFF" ||
           currentUser.role === "ADMIN") &&
+        screen === "staff-ticket-detail" &&
+        staffTicketId !== null ? (
+          <StaffTicketDetail
+            ticketId={staffTicketId}
+            onBack={backToStaffQueue}
+          />
+        ) : (currentUser.role === "IT_STAFF" ||
+          currentUser.role === "ADMIN") &&
         screen === "staff-queue" ? (
           <StaffTicketQueue
-            onOpenTicket={(ticketId) => {
-              setSelectedTicketId(ticketId);
-            }}
-           />
+            onOpenTicket={openStaffTicketDetail}
+        />
+
          ) : requesterLoading ? (
           <section className="zen-card shadow-sm">
             <div className="card-body p-4 text-center text-muted">
