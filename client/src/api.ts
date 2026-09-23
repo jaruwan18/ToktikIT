@@ -582,6 +582,65 @@ export async function getItTicketDetail(
   return response.json();
 }
 
+export async function addPublicComment(
+  ticketId: number,
+  body: string,
+): Promise<ItTicketDetail["messages"][number]> {
+  const response = await fetch(
+    `${API_URL}/api/tickets/${ticketId}/comments`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ body }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to create public comment.",
+      ),
+    );
+  }
+
+  const data = (await response.json()) as {
+    message: ItTicketDetail["messages"][number];
+  };
+
+  return data.message;
+}
+
+export async function addInternalNote(
+  ticketId: number,
+  body: string,
+): Promise<ItTicketDetail["messages"][number]> {
+  const response = await fetch(
+    `${API_URL}/api/tickets/${ticketId}/internal-notes`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ body }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to add internal note.",
+      ),
+    );
+  }
+
+  return response.json();
+}
 
 export async function uploadAttachment(
   requesterId: number,

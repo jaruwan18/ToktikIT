@@ -263,4 +263,229 @@ describe("StaffTicketDetail", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
+
+    it("distinguishes public comments from internal notes", async () => {
+    const ticketWithMessages = {
+      ...mockTicket,
+      messages: [
+        {
+          ...mockTicket.messages[0],
+          type: "COMMENT",
+          body: "Public update for the requester.",
+        },
+        {
+          id: 2,
+          type: "INTERNAL_NOTE",
+          body: "Internal note for IT Staff.",
+          createdAt: "2026-09-01T11:00:00.000Z",
+          updatedAt: "2026-09-01T11:00:00.000Z",
+          author: {
+            id: 20,
+            displayName: "IT Staff",
+            email: "staff@example.com",
+            role: "IT_STAFF",
+          },
+        },
+      ],
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ticketWithMessages,
+    });
+
+    render(
+      <StaffTicketDetail
+        ticketId={1}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await screen.findAllByText("TKT-2026-000001");
+
+    expect(
+      screen.getAllByText("Public Comment"),
+    ).toHaveLength(2);
+
+    expect(
+      screen.getAllByText("Internal Note"),
+    ).toHaveLength(2);
+
+    expect(
+      screen.getByText(
+        "Public update for the requester.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Internal note for IT Staff.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("adds a public comment", async () => {
+    const newComment = {
+      id: 2,
+      ticketId: 1,
+      type: "COMMENT",
+      body: "The issue has been checked.",
+      createdAt: "2026-09-01T12:00:00.000Z",
+      updatedAt: "2026-09-01T12:00:00.000Z",
+      author: {
+        id: 20,
+        displayName: "IT Staff",
+        email: "staff@example.com",
+        role: "IT_STAFF",
+      },
+    };
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockTicket,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: newComment,
+        }),
+      });
+
+    render(
+      <StaffTicketDetail
+        ticketId={1}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await screen.findAllByText("TKT-2026-000001");
+
+    fireEvent.change(
+      screen.getByLabelText("Message"),
+      {
+        target: {
+          value: "The issue has been checked.",
+        },
+      },
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Add Public Comment",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "The issue has been checked.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        "/api/tickets/1/comments",
+      ),
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          body: "The issue has been checked.",
+        }),
+      }),
+    );
+  });
+
+  it("adds an internal note", async () => {
+    const newNote = {
+      id: 3,
+      ticketId: 1,
+      type: "INTERNAL_NOTE",
+      body: "Checked the workstation configuration.",
+      createdAt: "2026-09-01T12:30:00.000Z",
+      updatedAt: "2026-09-01T12:30:00.000Z",
+      author: {
+        id: 20,
+        displayName: "IT Staff",
+        email: "staff@example.com",
+        role: "IT_STAFF",
+      },
+    };
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockTicket,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => newNote,
+      });
+
+    render(
+      <StaffTicketDetail
+        ticketId={1}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await screen.findAllByText("TKT-2026-000001");
+
+    fireEvent.change(
+      screen.getByLabelText("Message Type"),
+      {
+        target: {
+          value: "INTERNAL_NOTE",
+        },
+      },
+    );
+
+    fireEvent.change(
+      screen.getByLabelText("Message"),
+      {
+        target: {
+          value:
+            "Checked the workstation configuration.",
+        },
+      },
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Add Internal Note",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Checked the workstation configuration.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        "/api/tickets/1/internal-notes",
+      ),
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          body:
+            "Checked the workstation configuration.",
+        }),
+      }),
+    );
+  });
 });
