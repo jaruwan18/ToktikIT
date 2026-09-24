@@ -3,23 +3,38 @@ import {
   createTicket,
   getCategories,
   getRelatedSystems,
-  getRequesters,
   getTickets,
   getTicketDetail,
   uploadAttachment,
   downloadAttachment,
   removeAttachment,
+  getCurrentUser,
+  logout,
   type Category,
   type RelatedSystem,
-  type Requester,
   type TicketListItem,
   type TicketListParams,
   type RequestedPriority,
+  type CurrentStatus,
+  type CurrentUser,
 } from "./api.js";
+import Login from "./components/Login.js";
+import ChangePassword from "./components/ChangePassword.js";
+
+import AdminUserManagement from "./components/AdminUserManagement.js";
+import StaffTicketQueue from "./components/StaffTicketQueue.js";
+import StaffTicketDetail from "./components/StaffTicketDetail.js";
 
 type Priority = "" | RequestedPriority;
 type Status = "" | "NEW";
-type Screen = "my-tickets" | "create-ticket" | "ticket-detail";
+type Screen =
+  | "my-tickets"
+  | "create-ticket"
+  | "ticket-detail"
+  | "admin-users"
+  | "staff-queue" 
+  | "staff-ticket-detail";
+
 
 interface TicketDetail {
   id: number;
@@ -32,7 +47,7 @@ interface TicketDetail {
   summary: string;
   description: string;
   requestedPriority: RequestedPriority;
-  currentStatus: "NEW";
+  currentStatus: CurrentStatus;
   createdAt: string;
   updatedAt: string;
   attachments?: TicketAttachment[];
@@ -69,21 +84,60 @@ interface CreateFormErrors {
 }
 
 export default function App() {
-  /*
-   * Lab 2 temporary requester selector.
-   * Authentication is intentionally excluded from this lab.
-   */
-  const [requesters, setRequesters] = useState<Requester[]>([]);
-  const [requesterId, setRequesterId] = useState<number | null>(null);
-  const [requesterLoading, setRequesterLoading] = useState(true);
-  const [requesterError, setRequesterError] = useState("");
+ 
 
-  const [screen, setScreen] = useState<Screen>("my-tickets");
+  const [currentUser, setCurrentUser] =
+    useState<CurrentUser | null>(null);
 
+  const requesterId = currentUser?.requesterId ?? null;
+
+  const [screen, setScreen] =
+    useState<Screen>("my-tickets");
+
+  useEffect(() => {
+    if (
+      currentUser?.role === "IT_STAFF" &&
+      screen === "my-tickets"
+    ) {
+      setScreen("staff-queue");
+    }
+  }, [currentUser, screen]);
+    const [authLoading, setAuthLoading] = useState(true);
+    useEffect(() => {
+  let mounted = true;
+
+  const loadCurrentUser = async () => {
+    try {
+      const response = await getCurrentUser();
+
+      if (mounted) {
+        setCurrentUser(response);
+      }
+    } catch {
+      if (mounted) {
+        setCurrentUser(null);
+      }
+    } finally {
+      if (mounted) {
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  void loadCurrentUser();
+
+  return () => {
+    mounted = false;
+  };
+}, []);
+
+ 
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
   const [selectedTicket, setSelectedTicket] =
     useState<TicketDetail | null>(null);
   const [selectedTicketId, setSelectedTicketId] =
+    useState<number | null>(null);
+  const [staffTicketId, setStaffTicketId] =
     useState<number | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
@@ -128,14 +182,6 @@ export default function App() {
   const [createdTicketNumber, setCreatedTicketNumber] =
     useState("");
 
-  const selectedRequester =
-    requesterId === null
-      ? null
-      : requesters.find((requester) => requester.id === requesterId) ??
-        null;
-
-  const requesterName =
-    selectedRequester?.name ?? "No requester selected";
 
   const hasActiveFilters =
     search.trim() !== "" ||
@@ -143,72 +189,6 @@ export default function App() {
     requestedPriority !== "" ||
     currentStatus !== "";
 
-  /*
-   * Load the temporary Lab 2 requester selector.
-   * Only active requesters are available for selection.
-   */
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRequesters() {
-      setRequesterLoading(true);
-      setRequesterError("");
-
-      try {
-        const response = await getRequesters();
-
-        if (cancelled) {
-          return;
-        }
-
-        const activeRequesters = response.filter(
-          (requester) => requester.isActive,
-        );
-
-        setRequesters(activeRequesters);
-
-        /*
-         * Keep the current requester if it is still active.
-         * Otherwise select the first active requester for the
-         * temporary Lab 2 testing flow.
-         */
-        setRequesterId((currentRequesterId) => {
-          if (
-            currentRequesterId !== null &&
-            activeRequesters.some(
-              (requester) => requester.id === currentRequesterId,
-            )
-          ) {
-            return currentRequesterId;
-          }
-
-          return activeRequesters[0]?.id ?? null;
-        });
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-
-        setRequesters([]);
-        setRequesterId(null);
-        setRequesterError(
-          err instanceof Error
-            ? err.message
-            : "Unable to retrieve requesters.",
-        );
-      } finally {
-        if (!cancelled) {
-          setRequesterLoading(false);
-        }
-      }
-    }
-
-    void loadRequesters();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function loadTickets() {
     if (requesterId === null) {
@@ -278,10 +258,11 @@ export default function App() {
     void loadRelatedSystems();
   }, []);
 
-  /*
-   * Reload My Tickets whenever the selected requester or any
-   * list control changes.
-   */
+ /*
+ * Reload My Tickets whenever the current screen or
+ * any list control changes.
+ */
+
   useEffect(() => {
     if (screen === "my-tickets" && requesterId !== null) {
       void loadTickets();
@@ -298,25 +279,6 @@ export default function App() {
     page,
   ]);
 
-  /*
-   * Changing requester invalidates old ticket/detail data.
-   * This prevents data from the previous requester remaining
-   * visible while the new requester's data is loading.
-   */
-  useEffect(() => {
-    setTickets([]);
-    setTotalItems(0);
-    setTotalPages(0);
-    setPage(1);
-
-    setSelectedTicket(null);
-    setSelectedTicketId(null);
-    setDetailError("");
-    setAttachmentError("");
-    setSelectedFile(null);
-
-    setErrorMessage("");
-  }, [requesterId]);
 
   async function openTicketDetail(ticketId: number) {
     if (requesterId === null) {
@@ -348,32 +310,16 @@ export default function App() {
     }
   }
 
-  function handleRequesterChange(nextRequesterId: string) {
-    const parsedId = Number(nextRequesterId);
-
-    if (!nextRequesterId || Number.isNaN(parsedId)) {
-      setRequesterId(null);
-      return;
-    }
-
-    if (
-      !requesters.some(
-        (requester) => requester.id === parsedId,
-      )
-    ) {
-      return;
-    }
-
-    setRequesterId(parsedId);
-    setScreen("my-tickets");
-    setSearch("");
-    setCategoryId("");
-    setRequestedPriority("");
-    setCurrentStatus("");
-    setPage(1);
-    setSortBy("createdAt");
-    setSortOrder("desc");
+  function openStaffTicketDetail(ticketId: number) {
+    setStaffTicketId(ticketId);
+    setScreen("staff-ticket-detail");
   }
+
+  function backToStaffQueue() {
+    setStaffTicketId(null);
+    setScreen("staff-queue");
+  }
+
 
   function backToMyTickets() {
     setSelectedTicket(null);
@@ -747,7 +693,7 @@ export default function App() {
 
     if (requesterId === null) {
       setCreateError(
-        "Please select an active requester before creating a ticket.",
+        "Your account is not linked to an active requester.",
       );
       return;
     }
@@ -808,6 +754,44 @@ export default function App() {
     page * pageSize,
     totalItems,
   );
+ if (authLoading) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center">
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <div className="mt-2">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <Login
+        onLogin={(user) => {
+          setCurrentUser({
+            ...user,
+            role: user.role as CurrentUser["role"],
+          });
+        }}
+      />
+    );
+  }
+
+  if (currentUser.mustChangePassword) {
+  return (
+    <ChangePassword
+      onPasswordChanged={() => {
+        setCurrentUser({
+          ...currentUser,
+          mustChangePassword: false,
+        });
+      }}
+    />
+  );
+}
 
   return (
     <div className="min-vh-100">
@@ -838,6 +822,22 @@ export default function App() {
                   My Tickets
                 </button>
 
+                {(currentUser.role === "IT_STAFF" ||
+                  currentUser.role === "ADMIN") && (
+                  <button
+                    type="button"
+                    className={`header-nav-button ${
+                      screen === "staff-queue" ||
+                      screen === "staff-ticket-detail"
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() => setScreen("staff-queue")}
+               >
+                    IT Ticket Queue
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className={`header-nav-button ${
@@ -846,56 +846,47 @@ export default function App() {
                       : ""
                   }`}
                   onClick={openCreateTicket}
-                  disabled={
-                    requesterLoading ||
-                    requesterId === null
-                  }
+                  disabled={requesterId === null}
                 >
                   Create Ticket
                 </button>
+     
+              {currentUser.role === "ADMIN" && (
+                <button
+                  type="button"
+                  className={`header-nav-button ${
+                    screen === "admin-users" ? "active" : ""
+                 }`}
+                 onClick={() => setScreen("admin-users")}
+                >
+                 User Management
+               </button>
+              )}
               </nav>
 
-              <div className="small text-end">
-                <label
-                  htmlFor="requester-selector"
-                  className="form-label mb-1 text-white"
-                >
-                  Requester
-                </label>
-
-                <select
-                  id="requester-selector"
-                  className="form-select form-select-sm"
-                  value={
-                    requesterId === null
-                      ? ""
-                      : String(requesterId)
-                  }
-                  onChange={(event) =>
-                    handleRequesterChange(
-                      event.target.value,
-                    )
-                  }
-                  disabled={requesterLoading}
-                  aria-label="Select requester"
-                >
-                  <option value="">
-                    Select requester
-                  </option>
-
-                  {requesters.map((requester) => (
-                    <option
-                      key={requester.id}
-                      value={requester.id}
-                    >
-                      {requester.name}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="opacity-75 mt-1">
-                  Lab 2 testing requester
+              <div className="d-flex align-items-center gap-2">
+                <div className="text-end">
+                  <div className="fw-semibold">
+                    {currentUser.displayName}
+                  </div>
+                  <div className="small opacity-75">
+                    {currentUser.role}
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-light btn-sm"
+                  onClick={async () => {
+                    try {
+                      await logout();
+                    } finally {
+                      setCurrentUser(null);
+                    }
+                  }}
+                >
+                  Logout
+                </button>
               </div>
             </div>
           </div>
@@ -903,48 +894,24 @@ export default function App() {
       </header>
 
       <main className="container app-main">
-        {requesterLoading ? (
-          <section className="zen-card shadow-sm">
-            <div className="card-body p-4 text-center text-muted">
-              Loading requesters...
-            </div>
-          </section>
-        ) : requesterError ? (
-          <section
-            className="zen-alert-error rounded p-4"
-            role="alert"
-          >
-            <div className="fw-semibold mb-1">
-              Unable to load requesters
-            </div>
-            <div>{requesterError}</div>
-          </section>
-        ) : requesters.length === 0 ? (
-          <section className="zen-card shadow-sm">
-            <div className="empty-state">
-              <h1 className="h5">
-                No active requesters available
-              </h1>
+        {(currentUser.role === "IT_STAFF" ||
+          currentUser.role === "ADMIN") &&
+        screen === "staff-ticket-detail" &&
+        staffTicketId !== null ? (
+          <StaffTicketDetail
+            ticketId={staffTicketId}
+            onBack={backToStaffQueue}
+          />
+        ) : (currentUser.role === "IT_STAFF" ||
+          currentUser.role === "ADMIN") &&
+        screen === "staff-queue" ? (
+          <StaffTicketQueue
+            onOpenTicket={openStaffTicketDetail}
+        />
 
-              <p className="mb-0">
-                There are currently no active requesters
-                available for Lab 2 testing.
-              </p>
-            </div>
-          </section>
-        ) : requesterId === null ? (
-          <section className="zen-card shadow-sm">
-            <div className="empty-state">
-              <h1 className="h5">
-                Select a requester
-              </h1>
 
-              <p className="mb-0">
-                Please select an active requester to view
-                My Tickets or create a ticket.
-              </p>
-            </div>
-          </section>
+        ) : screen === "admin-users" ? (
+          <AdminUserManagement />
         ) : screen === "ticket-detail" ? (
           <section>
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">

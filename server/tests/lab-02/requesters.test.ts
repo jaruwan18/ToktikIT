@@ -57,6 +57,7 @@ describe("GET /api/requesters", () => {
         id: true,
         name: true,
         email: true,
+        isActive: true,
       },
       orderBy: {
         id: "asc",

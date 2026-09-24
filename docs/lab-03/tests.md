@@ -658,11 +658,11 @@ The test data should also contain:
 - The selected role is stored correctly.
 - The new user can log in according to the authentication rules.
 
-### ADMIN-03: Admin can deactivate a user
+### ADMIN-03: Admin can deactivate an eligible user
 
 **When**
 
-- Admin deactivates an eligible user.
+- Admin deactivates an eligible user other than the authenticated Admin.
 
 **Then**
 
@@ -686,7 +686,26 @@ The test data should also contain:
 - At least one active Admin remains.
 - The database is not changed.
 
-### ADMIN-05: Admin cannot remove the last active IT Staff user
+### ADMIN-05: Admin cannot deactivate their own account
+
+**Given**
+
+- The authenticated user has the Admin role.
+- The authenticated Admin attempts to deactivate their own account.
+
+**When**
+
+- The Admin submits a request to deactivate their own account.
+
+**Then**
+
+- The operation is rejected.
+- The server returns an appropriate validation or business-rule error.
+- The Admin account remains active.
+- No database changes are made.
+
+
+### ADMIN-06: Admin cannot remove the last active IT Staff user
 
 **Given**
 
@@ -701,7 +720,7 @@ The test data should also contain:
 - The operation is rejected.
 - At least one active IT Staff user remains.
 
-### ADMIN-06: Admin cannot remove the last active Requester
+### ADMIN-07: Admin cannot remove the last active Requester
 
 **Given**
 
@@ -716,7 +735,7 @@ The test data should also contain:
 - The operation is rejected.
 - At least one active Requester remains.
 
-### ADMIN-07: Inactive users are excluded from new assignments
+### ADMIN-08: Inactive users are excluded from new assignments
 
 **When**
 
@@ -726,7 +745,7 @@ The test data should also contain:
 
 - The inactive user is not available in new requester or ticket-owner selections where the specification requires active users only.
 
-### ADMIN-08: Admin operations are protected from other roles
+### ADMIN-09: Admin operations are protected from other roles
 
 **When**
 
