@@ -143,6 +143,9 @@ describe("StaffTicketDetail", () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/it/tickets/1"),
+      {
+        credentials: "include",
+      },
     );
   });
 
