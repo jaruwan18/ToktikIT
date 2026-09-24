@@ -512,6 +512,9 @@ export async function getItTickets(
 
   const response = await fetch(
     `${API_URL}/api/it/tickets?${searchParams.toString()}`,
+    {
+      credentials: "include",
+    },
   );
 
   if (!response.ok) {
@@ -560,6 +563,9 @@ export async function getItTicketDetail(
 ): Promise<ItTicketDetail> {
   const response = await fetch(
     `${API_URL}/api/it/tickets/${ticketId}`,
+    {
+      credentials: "include",
+    },
   );
 
   if (!response.ok) {
