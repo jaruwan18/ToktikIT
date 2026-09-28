@@ -157,7 +157,7 @@ export default function AdminUserManagement() {
       const response =
         await getAdminUsers(nextSearch);
 
-      setUsers(response.data);
+      setUsers(response.users);
     } catch (error) {
       setUsers([]);
       setErrorMessage(
@@ -198,7 +198,7 @@ export default function AdminUserManagement() {
           return;
         }
 
-        setUsers(response.data);
+        setUsers(response.users);
       } catch (error) {
         if (cancelled) {
           return;

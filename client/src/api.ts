@@ -778,13 +778,7 @@ export interface AdminUser {
 }
 
 export interface AdminUserListResponse {
-  data: AdminUser[];
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  };
+  users: AdminUser[];
 }
 
 export interface CreateAdminUserInput {

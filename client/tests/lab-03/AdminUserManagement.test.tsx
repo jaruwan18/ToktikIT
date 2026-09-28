@@ -23,7 +23,7 @@ describe("Lab 3 - Administrator User Management UI", () => {
     });
 
     vi.spyOn(api, "getAdminUsers").mockResolvedValue({
-      data: [
+      users: [
         {
           id: 1,
           email: "jennifer@example.com",
@@ -55,12 +55,6 @@ describe("Lab 3 - Administrator User Management UI", () => {
           updatedAt: "2026-01-01T00:00:00.000Z",
         },
       ],
-      pagination: {
-        page: 1,
-        pageSize: 50,
-        total: 3,
-        totalPages: 1,
-      },
     });
   });
 
@@ -90,7 +84,7 @@ describe("Lab 3 - Administrator User Management UI", () => {
     const getAdminUsersSpy = vi
       .spyOn(api, "getAdminUsers")
       .mockResolvedValueOnce({
-        data: [
+        users: [
           {
             id: 1,
             email: "jennifer@example.com",
@@ -122,15 +116,9 @@ describe("Lab 3 - Administrator User Management UI", () => {
             updatedAt: "2026-01-01T00:00:00.000Z",
           },
         ],
-        pagination: {
-          page: 1,
-          pageSize: 50,
-          total: 3,
-          totalPages: 1,
-        },
       })
       .mockResolvedValueOnce({
-        data: [
+        users: [
           {
             id: 1,
             email: "jennifer@example.com",
@@ -142,12 +130,6 @@ describe("Lab 3 - Administrator User Management UI", () => {
             updatedAt: "2026-01-01T00:00:00.000Z",
           },
         ],
-        pagination: {
-          page: 1,
-          pageSize: 50,
-          total: 1,
-          totalPages: 1,
-        },
       });
 
     render(<AdminUserManagement />);
