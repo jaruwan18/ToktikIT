@@ -1,6 +1,7 @@
 import request from "supertest";
 import {
   afterEach,
+  beforeEach,
   describe,
   expect,
   it,
@@ -68,6 +69,15 @@ async function resetTicketOne() {
     },
   });
 }
+
+/*
+ * Ticket 1 is shared with other Lab 3 integration tests.
+ * Always restore its baseline state before and after each test
+ * so one test does not depend on another test's database changes.
+ */
+beforeEach(async () => {
+  await resetTicketOne();
+});
 
 afterEach(async () => {
   await resetTicketOne();

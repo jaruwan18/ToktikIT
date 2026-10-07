@@ -183,7 +183,7 @@ async function main() {
     });
 
     savedUsers.set(user.email, savedUser);
-    
+
     if (user.role === Role.REQUESTER) {
       await prisma.requester.update({
         where: { email: user.email },
@@ -426,12 +426,106 @@ async function main() {
     ],
   });
 
+  // Seed Actions Taken
+  //
+  // The seed intentionally represents:
+  // - ticket1: multiple Actions Taken
+  // - ticket2: one Action Taken
+  // - ticket3: zero Actions Taken
+  // - ticket4: multiple Actions Taken
+  //
+  // Existing Actions Taken for these seeded tickets are removed first so
+  // running the seed repeatedly does not create duplicate records.
+  await prisma.actionTaken.deleteMany({
+    where: {
+      ticketId: {
+        in: [ticket1.id, ticket2.id, ticket3.id, ticket4.id],
+      },
+    },
+  });
+
+  const actionDateBase = new Date("2026-10-01T09:00:00.000Z");
+
+  await prisma.actionTaken.createMany({
+    data: [
+      {
+        ticketId: ticket1.id,
+        actionDateTime: new Date(actionDateBase.getTime()),
+        actionDescription:
+          "Checked the power adapter and performed initial hardware diagnostics.",
+        result:
+          "Power adapter is functioning, but the laptop still does not start.",
+        performedById: alex.id,
+        followUpRequired: true,
+        followUpNote:
+          "Perform a deeper hardware diagnostic and inspect the internal power components.",
+        attachmentNotes: null,
+        idempotencyKey: "seed-action-ticket1-01",
+      },
+      {
+        ticketId: ticket1.id,
+        actionDateTime: new Date(actionDateBase.getTime() + 60 * 60 * 1000),
+        actionDescription:
+          "Ran additional hardware diagnostics and inspected the internal power connection.",
+        result:
+          "Hardware fault identified and replacement service is required.",
+        performedById: alex.id,
+        followUpRequired: false,
+        followUpNote: null,
+        attachmentNotes: "Hardware diagnostic report available for service review.",
+        idempotencyKey: "seed-action-ticket1-02",
+      },
+      {
+        ticketId: ticket2.id,
+        actionDateTime: new Date(actionDateBase.getTime() + 24 * 60 * 60 * 1000),
+        actionDescription:
+          "Reviewed the LEB2 submission error and checked the uploaded file format.",
+        result:
+          "The uploaded file format is valid; further requester information is required.",
+        performedById: jordan.id,
+        followUpRequired: true,
+        followUpNote:
+          "Ask the requester to provide the exact error message shown during submission.",
+        attachmentNotes: null,
+        idempotencyKey: "seed-action-ticket2-01",
+      },
+      {
+        ticketId: ticket4.id,
+        actionDateTime: new Date(actionDateBase.getTime() + 2 * 24 * 60 * 60 * 1000),
+        actionDescription:
+          "Verified the requester account and performed a password reset.",
+        result:
+          "Password reset completed successfully.",
+        performedById: taylor.id,
+        followUpRequired: true,
+        followUpNote:
+          "Wait for requester confirmation that email access has been restored.",
+        attachmentNotes: null,
+        idempotencyKey: "seed-action-ticket4-01",
+      },
+      {
+        ticketId: ticket4.id,
+        actionDateTime: new Date(actionDateBase.getTime() + 3 * 24 * 60 * 60 * 1000),
+        actionDescription:
+          "Confirmed the requester can sign in to the university email account.",
+        result:
+          "Requester confirmed that email access has been restored.",
+        performedById: taylor.id,
+        followUpRequired: false,
+        followUpNote: null,
+        attachmentNotes: null,
+        idempotencyKey: "seed-action-ticket4-02",
+      },
+    ],
+  });
+
   console.log(`Seeded ${CATEGORIES.length} categories.`);
   console.log(`Seeded ${REQUESTERS.length} requesters.`);
   console.log(`Seeded ${RELATED_SYSTEMS.length} related systems.`);
   console.log(`Seeded ${USERS.length} users.`);
   console.log("Seeded 4 sample tickets.");
   console.log("Seeded public comments and internal notes.");
+  console.log("Seeded 5 Actions Taken: ticket1=2, ticket2=1, ticket3=0, ticket4=2.");
   console.log(`Initial password: ${INITIAL_PASSWORD}`);
 }
 
