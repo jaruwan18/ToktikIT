@@ -127,9 +127,15 @@ The backend shall enforce valid status transitions.
 
 ### FR-08 Resolution Rule
 
-A Ticket shall not be moved to `Resolved` unless the required resolution conditions defined in the approved workflow are satisfied.
+A Ticket may be moved to `Resolved` only when all of the following conditions are satisfied:
 
-The backend is authoritative for this rule.
+- The current Ticket status is `In Progress`, `Waiting for Requester`, or `Reopened`.
+- The user performing the transition is an authorized IT Staff member or Administrator.
+- The Ticket has at least one Actions Taken record.
+- The most recent Actions Taken record contains a non-empty Action Description and Result.
+- If the most recent Actions Taken record has `Follow-Up Required = true`, its Follow-up Note must not be empty.
+
+The backend is authoritative for this rule and must reject a request that does not satisfy these conditions.
 
 The UI may guide users but must not be treated as the security or business-rule boundary.
 
@@ -269,9 +275,15 @@ Invalid transitions must return a safe conflict/validation response rather than 
 
 ### BR-11 Resolution Gate
 
-A Ticket cannot enter `Resolved` when the required resolution conditions are not satisfied.
+A Ticket cannot enter `Resolved` unless all resolution conditions are satisfied:
 
-The exact conditions are defined by the final approved workflow and must be enforced by the backend.
+1. The current status is `In Progress`, `Waiting for Requester`, or `Reopened`.
+2. The transition is performed by an authorized IT Staff member or Administrator.
+3. The Ticket has at least one Actions Taken record.
+4. The most recent Actions Taken record has a non-empty Action Description and Result.
+5. When `Follow-Up Required` is true on the most recent Actions Taken record, `Follow-up Note` is required.
+
+The backend must enforce these conditions even when the client bypasses the normal UI workflow.
 
 ### BR-12 Closed Tickets
 
@@ -540,7 +552,9 @@ Given a Ticket and requested next status, the backend accepts only transitions d
 
 AC-07 Resolution Gate
 
-Given a Ticket that does not satisfy the required resolution conditions, an attempt to move it to Resolved is rejected safely.
+Given a Ticket in `In Progress`, `Waiting for Requester`, or `Reopened`, when an IT Staff/Admin user attempts to change it to `Resolved`, the backend accepts the transition only when the Ticket has at least one Actions Taken record, the most recent Action Taken has a non-empty Action Description and Result, and any required Follow-up Note is present.
+
+If any required condition is missing, the backend rejects the request and the Ticket status remains unchanged.
 
 AC-08 Dashboard Metrics
 
