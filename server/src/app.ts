@@ -16,6 +16,8 @@ import {
 } from "./auth.js";
 import { requireRole } from "./authorization.js";
 import { adminUsersRouter } from "./adminUsers.js";
+import { actionsTakenRouter } from "./actionsTaken.js";
+
 
 export const app = express();
 
@@ -32,6 +34,7 @@ app.use(sessionMiddleware);
 
 app.use("/api/auth", authRouter);
 app.use("/api/admin", adminUsersRouter);
+app.use("/api/tickets", actionsTakenRouter);
 
 // ---------------------------------------------------------------------------
 // GET /api/it/tickets
