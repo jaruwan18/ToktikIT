@@ -12,6 +12,16 @@ describe("Lab 2 - Create Ticket UI", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
 
+    vi.spyOn(api, "getCurrentUser").mockResolvedValue({
+      id: 1,
+      email: "jennifer@example.com",
+      displayName: "Jennifer Anderson",
+      role: "REQUESTER",
+      mustChangePassword: false,
+      isActive: true,
+      requesterId: 1,
+    });
+
     vi.spyOn(api, "getRequesters").mockResolvedValue([
       {
         id: 1,
@@ -105,7 +115,7 @@ describe("Lab 2 - Create Ticket UI", () => {
     expect(
       await screen.findByRole("heading", {
         name: /Create Ticket/i,
-      })
+      }),
     ).toBeInTheDocument();
 
     expect(getSummary()).toBeInTheDocument();
@@ -120,22 +130,24 @@ describe("Lab 2 - Create Ticket UI", () => {
 
     await openCreateTicket();
 
-    const submitButton = await screen.findByRole("button", {
-      name: /Submit Ticket/i,
-    });
-
-    fireEvent.click(submitButton);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Submit Ticket/i,
+      }),
+    );
 
     expect(
-      await screen.findByText(/Summary is required/i)
+      await screen.findByText(/Summary is required/i),
     ).toBeInTheDocument();
 
     expect(
-      await screen.findByText(/Description is required/i)
+      await screen.findByText(/Description is required/i),
     ).toBeInTheDocument();
 
     expect(
-      await screen.findByText(/Please select a requested priority/i)
+      await screen.findByText(
+        /Please select a requested priority/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -161,13 +173,13 @@ describe("Lab 2 - Create Ticket UI", () => {
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Submit Ticket/i,
-      })
+      }),
     );
 
     expect(
       await screen.findByText(
-        /Summary must be at least 5 characters/i
-      )
+        /Summary must be at least 5 characters/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -191,13 +203,13 @@ describe("Lab 2 - Create Ticket UI", () => {
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Submit Ticket/i,
-      })
+      }),
     );
 
     expect(
       await screen.findByText(
-        /Description must be at least 10 characters/i
-      )
+        /Description must be at least 10 characters/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -227,8 +239,7 @@ describe("Lab 2 - Create Ticket UI", () => {
 
     fireEvent.change(getDescription(), {
       target: {
-        value:
-          "Unable to access the company email account.",
+        value: "Unable to access the company email account.",
       },
     });
 
@@ -247,7 +258,7 @@ describe("Lab 2 - Create Ticket UI", () => {
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Submit Ticket/i,
-      })
+      }),
     );
 
     await waitFor(() => {
@@ -255,13 +266,13 @@ describe("Lab 2 - Create Ticket UI", () => {
     });
 
     expect(
-      await screen.findByText("TKT-2026-000001")
+      await screen.findByText("TKT-2026-000001"),
     ).toBeInTheDocument();
   });
 
   it("preserves form values when ticket creation fails", async () => {
     vi.spyOn(api, "createTicket").mockRejectedValue(
-      new Error("Unable to connect to TokTickIT API")
+      new Error("Unable to connect to TokTickIT API"),
     );
 
     render(<App />);
@@ -277,8 +288,7 @@ describe("Lab 2 - Create Ticket UI", () => {
 
     fireEvent.change(description, {
       target: {
-        value:
-          "Unable to access the company email account.",
+        value: "Unable to access the company email account.",
       },
     });
 
@@ -297,17 +307,17 @@ describe("Lab 2 - Create Ticket UI", () => {
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Submit Ticket/i,
-      })
+      }),
     );
 
     expect(
-      await screen.findByText(/Unable to create ticket/i)
+      await screen.findByText(/Unable to create ticket/i),
     ).toBeInTheDocument();
 
     expect(summary).toHaveValue("Cannot access email");
 
     expect(description).toHaveValue(
-      "Unable to access the company email account."
+      "Unable to access the company email account.",
     );
   });
 });

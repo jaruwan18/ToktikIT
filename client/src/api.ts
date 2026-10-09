@@ -228,6 +228,39 @@ export interface ItTicketDetail {
   attachments: TicketAttachment[];
 }
 
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  actionDateTime: string;
+  actionDescription: string;
+  result: string;
+  performedById: number;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  performedBy: {
+    id: number;
+    displayName: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface CreateActionTakenInput {
+  actionDateTime: string;
+  actionDescription: string;
+  result: string;
+  followUpRequired: boolean;
+  followUpNote?: string;
+  attachmentNotes?: string;
+}
+
+export interface UpdateActionTakenInput
+  extends CreateActionTakenInput {
+  updatedAt: string;
+}
 
 export interface LoginResponse {
   user: CurrentUser;
@@ -761,6 +794,97 @@ export async function removeAttachment(
 
   return response.json();
 }
+// ---------------------------------------------------------------------------
+// Lab 4 - Actions Taken
+// ---------------------------------------------------------------------------
+
+export async function getTicketActions(
+  ticketId: number,
+): Promise<{ data: ActionTaken[] }> {
+  const response = await fetch(
+    `/api/tickets/${ticketId}/actions`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to retrieve Actions Taken.",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
+export async function createTicketAction(
+  ticketId: number,
+  input: CreateActionTakenInput,
+  idempotencyKey: string,
+): Promise<ActionTaken> {
+  const response = await fetch(
+    `/api/tickets/${ticketId}/actions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      credentials: "include",
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to create Action Taken.",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
+export async function updateTicketAction(
+  ticketId: number,
+  actionId: number,
+  input: UpdateActionTakenInput,
+): Promise<ActionTaken> {
+  const response = await fetch(
+    `/api/tickets/${ticketId}/actions/${actionId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    if (response.status === 409) {
+      throw new Error(
+        "This Action Taken was updated by another user",
+      );
+    }
+
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to update Action Taken.",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
 
 // ---------------------------------------------------------------------------
 // Lab 3 - Administrator User Management
