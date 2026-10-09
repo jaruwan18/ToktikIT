@@ -20,6 +20,7 @@ import {
 } from "./api.js";
 import Login from "./components/Login.js";
 import ChangePassword from "./components/ChangePassword.js";
+import ActionsTaken from "./components/ActionsTaken.js";
 
 import AdminUserManagement from "./components/AdminUserManagement.js";
 import StaffTicketQueue from "./components/StaffTicketQueue.js";
@@ -1091,6 +1092,12 @@ export default function App() {
                     </div>
                   </div>
                 </section>
+
+                {/* Lab 4 - Actions Taken */}
+                <ActionsTaken
+                  ticketId={selectedTicket.id}
+                  canEdit={false}
+                />
 
                 <section className="zen-card shadow-sm mb-5">
                   <div className="card-body p-4">

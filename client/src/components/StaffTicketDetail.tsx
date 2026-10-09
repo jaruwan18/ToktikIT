@@ -5,6 +5,7 @@ import {
   getItTicketDetail,
   type ItTicketDetail,
 } from "../api.js";
+import ActionsTaken from "./ActionsTaken.js";
 
 interface StaffTicketDetailProps {
   ticketId: number;
@@ -445,6 +446,12 @@ export default function StaffTicketDetail({
               )}
             </div>
           </div>
+
+          {/* Lab 4 - Actions Taken */}
+          <ActionsTaken
+            ticketId={ticket.id}
+            canEdit={true}
+           />
 
           <div className="zen-card shadow-sm">
             <div className="card-body p-4">
