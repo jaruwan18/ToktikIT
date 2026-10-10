@@ -1966,6 +1966,7 @@ app.get(
             },
 
             select: {
+              id: true,
               ticketNumber: true,
               requesterId: true,
               categoryId: true,
@@ -1976,7 +1977,6 @@ app.get(
               currentStatus: true,
               createdAt: true,
               updatedAt: true,
-
               requester: {
                 select: {
                   id: true,
@@ -2028,6 +2028,7 @@ app.get(
       }
 
       return res.status(200).json({
+        id: ticket.id,
         ticketNumber:
           ticket.ticketNumber,
 
