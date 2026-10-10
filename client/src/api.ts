@@ -509,6 +509,9 @@ export async function getTickets(
 
   const response = await fetch(
     `${API_URL}/api/tickets?${searchParams.toString()}`,
+    {
+      credentials: "include",
+    },
   );
 
   if (!response.ok) {
@@ -802,7 +805,7 @@ export async function getTicketActions(
   ticketId: number,
 ): Promise<{ data: ActionTaken[] }> {
   const response = await fetch(
-    `/api/tickets/${ticketId}/actions`,
+    `${API_URL}/api/tickets/${ticketId}/actions`,
     {
       credentials: "include",
     },
@@ -826,7 +829,7 @@ export async function createTicketAction(
   idempotencyKey: string,
 ): Promise<ActionTaken> {
   const response = await fetch(
-    `/api/tickets/${ticketId}/actions`,
+    `${API_URL}/api/tickets/${ticketId}/actions`,
     {
       method: "POST",
       headers: {
@@ -850,13 +853,14 @@ export async function createTicketAction(
   return response.json();
 }
 
+
 export async function updateTicketAction(
   ticketId: number,
   actionId: number,
   input: UpdateActionTakenInput,
 ): Promise<ActionTaken> {
   const response = await fetch(
-    `/api/tickets/${ticketId}/actions/${actionId}`,
+    `${API_URL}/api/tickets/${ticketId}/actions/${actionId}`,
     {
       method: "PATCH",
       headers: {
@@ -868,12 +872,6 @@ export async function updateTicketAction(
   );
 
   if (!response.ok) {
-    if (response.status === 409) {
-      throw new Error(
-        "This Action Taken was updated by another user",
-      );
-    }
-
     throw new Error(
       await getApiErrorMessage(
         response,
@@ -924,7 +922,12 @@ export interface SetInitialPasswordInput {
 }
 
 interface ApiErrorResponse {
-  error?: string;
+  error?:
+    | string
+    | {
+        code?: string;
+        message?: string;
+      };
   message?: string;
   fields?: Record<string, string>;
 }
@@ -944,19 +947,31 @@ async function getApiErrorMessage(
       return Object.values(errorData.fields).join(" ");
     }
 
+    // รองรับรูปแบบ { error: { code, message } }
+    if (
+      typeof errorData.error === "object" &&
+      errorData.error !== null &&
+      typeof errorData.error.message === "string"
+    ) {
+      return errorData.error.message;
+    }
+
+    // รองรับรูปแบบ { message: "..." }
     if (typeof errorData.message === "string") {
       return errorData.message;
     }
 
+    // รองรับรูปแบบ { error: "..." }
     if (typeof errorData.error === "string") {
       return errorData.error;
     }
   } catch {
-    // Keep fallback when the response is not JSON.
+    // ใช้ fallback เมื่อ response ไม่ใช่ JSON
   }
 
   return fallback;
 }
+
 
 export async function getAdminUsers(
   search = "",

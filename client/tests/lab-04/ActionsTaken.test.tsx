@@ -66,8 +66,11 @@ describe("Lab 4 - Actions Taken", () => {
     expect(screen.queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/tickets/100/actions");
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "http://localhost:3000/api/tickets/100/actions",
+    );
   });
+
 
   it("should show an empty state when there are no Actions Taken", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
@@ -295,7 +298,9 @@ describe("Lab 4 - Actions Taken", () => {
 
     const createRequest = fetchMock.mock.calls[1];
 
-    expect(createRequest[0]).toBe("/api/tickets/100/actions");
+    expect(createRequest[0]).toBe(
+        "http://localhost:3000/api/tickets/100/actions",
+    );
 
     const createOptions = createRequest[1] as RequestInit;
 
@@ -408,7 +413,7 @@ describe("Lab 4 - Actions Taken", () => {
     const updateRequest = fetchMock.mock.calls[1];
 
     expect(updateRequest[0]).toBe(
-      "/api/tickets/100/actions/1",
+      "http://localhost:3000/api/tickets/100/actions/1",
     );
 
     const updateOptions = updateRequest[1] as RequestInit;
