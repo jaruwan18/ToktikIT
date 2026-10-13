@@ -341,34 +341,26 @@ app.get(
 app.patch(
   "/api/tickets/:ticketId/status",
   requireRole(Role.IT_STAFF, Role.ADMIN),
-  async (
-    req: Request,
-    res: Response,
-  ) => {
+  async (req: Request, res: Response) => {
     try {
       const ticketId = Number(req.params.ticketId);
 
-      if (
-        !Number.isInteger(ticketId) ||
-        ticketId < 1
-      ) {
+      if (!Number.isInteger(ticketId) || ticketId < 1) {
         return res.status(404).json({
           error: "TICKET_NOT_FOUND",
           message: "Ticket not found.",
         });
       }
 
-      const ticket =
-        await getPrisma().ticket.findUnique({
-          where: {
-            id: ticketId,
-          },
+      const prisma = getPrisma();
 
-          select: {
-            id: true,
-            currentStatus: true,
-          },
-        });
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        select: {
+          id: true,
+          currentStatus: true,
+        },
+      });
 
       if (!ticket) {
         return res.status(404).json({
@@ -377,9 +369,9 @@ app.patch(
         });
       }
 
-      const requestedStatus = req.body.status as CurrentStatus;
+      const requestedStatus = req.body?.status as CurrentStatus;
 
-      const validStatuses = [
+      const validStatuses: string[] = [
         "NEW",
         "OPEN",
         "IN_PROGRESS",
@@ -400,86 +392,117 @@ app.patch(
         });
       }
 
-      // Status transition matrix for IT Staff/Admin.
       const allowedTransitions: Record<
-        string,
-        string[]
+        CurrentStatus,
+        CurrentStatus[]
       > = {
-        NEW: [
-          "OPEN",
-          "CANCELLED",
-        ],
-
-        OPEN: [
-          "IN_PROGRESS",
-          "CANCELLED",
-        ],
-
+        NEW: ["OPEN", "CANCELLED"],
+        OPEN: ["CANCELLED"],
         IN_PROGRESS: [
           "WAITING_FOR_REQUESTER",
           "RESOLVED",
           "CANCELLED",
         ],
-
         WAITING_FOR_REQUESTER: [
           "IN_PROGRESS",
+          "RESOLVED",
           "CANCELLED",
         ],
-
-        RESOLVED: [
-          "CLOSED",
-          "REOPENED",
-        ],
-
-        CLOSED: [
-          "REOPENED",
-        ],
-
+        RESOLVED: ["CLOSED", "REOPENED"],
+        CLOSED: ["REOPENED"],
         REOPENED: [
-          "OPEN",
           "IN_PROGRESS",
+          "WAITING_FOR_REQUESTER",
+          "RESOLVED",
           "CANCELLED",
         ],
-
         CANCELLED: [],
       };
 
-      const currentStatus =
-        ticket.currentStatus;
+      const currentStatus = ticket.currentStatus;
 
       if (
         currentStatus === requestedStatus ||
-        !allowedTransitions[currentStatus]?.includes(
-          requestedStatus,
-        )
+        !allowedTransitions[currentStatus].includes(requestedStatus)
       ) {
-        return res.status(422).json({
+        return res.status(409).json({
           error: "INVALID_STATUS_TRANSITION",
-          message: `Cannot change ticket status from ${currentStatus} to ${requestedStatus}.`,
+          message:
+            "The requested Ticket status transition is not allowed.",
         });
       }
 
-      const updatedTicket =
-        await getPrisma().ticket.update({
+      // Lab 4: Resolution Gate.
+      if (requestedStatus === "RESOLVED") {
+        const latestAction = await prisma.actionTaken.findFirst({
           where: {
-            id: ticketId,
+            ticketId,
           },
-
-          data: {
-            currentStatus: requestedStatus,
-          },
-
+          orderBy: [
+            { actionDateTime: "desc" },
+            { id: "desc" },
+          ],
           select: {
-            id: true,
-            ticketNumber: true,
-            currentStatus: true,
-            updatedAt: true,
+            actionDescription: true,
+            result: true,
+            followUpRequired: true,
+            followUpNote: true,
           },
         });
 
-      return res.status(200).json(
-        updatedTicket,
-      );
+        const resolutionAllowed =
+          latestAction !== null &&
+          latestAction.actionDescription.trim().length > 0 &&
+          latestAction.result.trim().length > 0 &&
+          (
+            !latestAction.followUpRequired ||
+            (
+              typeof latestAction.followUpNote === "string" &&
+              latestAction.followUpNote.trim().length > 0
+            )
+          );
+
+        if (!resolutionAllowed) {
+          return res.status(409).json({
+            error: "RESOLUTION_NOT_ALLOWED",
+            message:
+              "The Ticket does not satisfy the required resolution conditions.",
+          });
+        }
+      }
+
+      // Compare-and-set: only update if the status is still unchanged.
+      const updated = await prisma.ticket.updateMany({
+        where: {
+          id: ticketId,
+          currentStatus,
+        },
+        data: {
+          currentStatus: requestedStatus,
+        },
+      });
+
+      if (updated.count !== 1) {
+        return res.status(409).json({
+          error: "STALE_UPDATE",
+          message:
+            "The Ticket status changed after it was loaded. Refresh and try again.",
+        });
+      }
+
+      const updatedTicket = await prisma.ticket.findUnique({
+        where: {
+          id: ticketId,
+        },
+        select: {
+          id: true,
+          ticketNumber: true,
+          currentStatus: true,
+          updatedAt: true,
+        },
+      });
+
+      return res.status(200).json(updatedTicket);
     } catch (error) {
       console.error(
         "PATCH /api/tickets/:ticketId/status failed:",
@@ -493,6 +516,7 @@ app.patch(
     }
   },
 );
+
 
 // ---------------------------------------------------------------------------
 // PATCH /api/tickets/:ticketId/it-priority
