@@ -169,7 +169,7 @@ describe("Lab 3 - IT Staff Ticket Operations API", () => {
         status: "NEW",
       });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(409);
     expect(response.body.error).toBe(
       "INVALID_STATUS_TRANSITION",
     );
