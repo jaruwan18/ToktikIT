@@ -397,7 +397,11 @@ app.patch(
         CurrentStatus[]
       > = {
         NEW: ["OPEN", "CANCELLED"],
-        OPEN: ["CANCELLED"],
+        OPEN: [
+          "IN_PROGRESS",
+          "WAITING_FOR_REQUESTER",
+          "CANCELLED",
+        ],
         IN_PROGRESS: [
           "WAITING_FOR_REQUESTER",
           "RESOLVED",

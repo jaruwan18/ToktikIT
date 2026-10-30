@@ -883,6 +883,108 @@ export async function updateTicketAction(
   return response.json();
 }
 
+// ---------------------------------------------------------------------------
+// Lab 4 - Ticket Workflow
+// ---------------------------------------------------------------------------
+
+// Mirrors the transition matrix in docs/lab-04/api-spec.md section 5.3.
+// The backend remains the authority; this only decides which options to show.
+export const ALLOWED_STATUS_TRANSITIONS: Record<
+  CurrentStatus,
+  CurrentStatus[]
+> = {
+  NEW: ["OPEN", "CANCELLED"],
+  OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "CANCELLED"],
+  IN_PROGRESS: ["WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"],
+  WAITING_FOR_REQUESTER: ["IN_PROGRESS", "RESOLVED", "CANCELLED"],
+  RESOLVED: ["CLOSED", "REOPENED"],
+  CLOSED: ["REOPENED"],
+  REOPENED: [
+    "IN_PROGRESS",
+    "WAITING_FOR_REQUESTER",
+    "RESOLVED",
+    "CANCELLED",
+  ],
+  CANCELLED: [],
+};
+
+export interface TicketStatusUpdateResult {
+  id: number;
+  ticketNumber: string;
+  currentStatus: CurrentStatus;
+  updatedAt: string;
+}
+
+export class TicketStatusError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "TicketStatusError";
+    this.code = code;
+  }
+}
+
+const TICKET_STATUS_ERROR_MESSAGES: Record<string, string> = {
+  RESOLUTION_NOT_ALLOWED:
+    "This Ticket cannot be resolved yet. The latest Action Taken needs an Action Description and a Result, plus a Follow-up Note when follow-up is required.",
+  INVALID_STATUS_TRANSITION:
+    "This status change is not allowed from the current status. Refresh the Ticket and try again.",
+  STALE_UPDATE:
+    "The Ticket status was changed by someone else. Refresh the Ticket and try again.",
+  FORBIDDEN:
+    "You do not have permission to change this Ticket's status.",
+};
+
+export async function updateTicketStatus(
+  ticketId: number,
+  status: CurrentStatus,
+): Promise<TicketStatusUpdateResult> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${API_URL}/api/tickets/${ticketId}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ status }),
+      },
+    );
+  } catch {
+    throw new TicketStatusError(
+      "NETWORK_ERROR",
+      "Unable to reach the server. Your selection was kept; please try again.",
+    );
+  }
+
+  if (!response.ok) {
+    let code = response.status === 403 ? "FORBIDDEN" : "UNKNOWN";
+
+    try {
+      const errorData =
+        (await response.json()) as ApiErrorResponse;
+
+      if (typeof errorData.error === "string") {
+        code = errorData.error;
+      }
+    } catch {
+      // Keep the status-based code when the response is not JSON.
+    }
+
+    throw new TicketStatusError(
+      code,
+      TICKET_STATUS_ERROR_MESSAGES[code] ??
+        "Unable to change the Ticket status. Please try again.",
+    );
+  }
+
+  return response.json();
+}
+
 
 // ---------------------------------------------------------------------------
 // Lab 3 - Administrator User Management
@@ -1096,4 +1198,4 @@ export async function setAdminUserInitialPassword(
   };
 
   return data.user;
-}
+}
