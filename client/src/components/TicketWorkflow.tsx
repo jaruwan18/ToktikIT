@@ -64,6 +64,7 @@ export default function TicketWorkflow({
       const result = await updateTicketStatus(
         ticketId,
         selectedStatus,
+        currentStatus,
       );
 
       onStatusChanged(result);

@@ -425,6 +425,22 @@ app.patch(
 
       const currentStatus = ticket.currentStatus;
 
+      // Lab 4: stale-update check. The client sends the status it displayed;
+      // if the Ticket has changed since then, reject instead of applying a
+      // transition the user did not see. Optional for older clients.
+      const expectedStatus = req.body?.expectedStatus;
+
+      if (
+        expectedStatus !== undefined &&
+        expectedStatus !== currentStatus
+      ) {
+        return res.status(409).json({
+          error: "STALE_UPDATE",
+          message:
+            "The Ticket status changed after it was loaded. Refresh and try again.",
+        });
+      }
+
       if (
         currentStatus === requestedStatus ||
         !allowedTransitions[currentStatus].includes(requestedStatus)
@@ -1300,27 +1316,13 @@ app.post(
       const MAX_RETRIES = 3;
       const now = new Date();
 
-      const startOfYear =
-        new Date(
-          now.getFullYear(),
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-        );
-
-      const startOfNextYear =
-        new Date(
-          now.getFullYear() + 1,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-        );
+      // Lab 4 fix: the next sequence is based on the highest existing
+      // TKT-YYYY-NNNNNN number for this year, not on the Ticket count.
+      // Counting broke after Tickets were deleted (for example by tests),
+      // because the count could fall below numbers already in use.
+      // Seed-only numbers (9xxxxx) are excluded from the sequence.
+      const ticketNumberPattern =
+        `^TKT-${now.getFullYear()}-[0-8][0-9]{5}$`;
 
       for (
         let attempt = 0;
@@ -1328,19 +1330,19 @@ app.post(
         attempt++
       ) {
         try {
-          const ticketCount =
-            await prisma.ticket.count({
-              where: {
-                createdAt: {
-                  gte: startOfYear,
-                  lt: startOfNextYear,
-                },
-              },
-            });
+          const [latest] =
+            await prisma.$queryRaw<
+              { maxSequence: number | null }[]
+            >`
+              SELECT MAX(CAST(RIGHT("ticketNumber", 6) AS INTEGER))
+                AS "maxSequence"
+              FROM "Ticket"
+              WHERE "ticketNumber" ~ ${ticketNumberPattern}
+            `;
 
           const ticketNumber =
             generateTicketNumber(
-              ticketCount + 1,
+              (latest?.maxSequence ?? 0) + 1,
               now,
             );
 

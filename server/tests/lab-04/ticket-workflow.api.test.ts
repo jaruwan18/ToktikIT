@@ -418,6 +418,52 @@ describe("Lab 4 - Ticket Status Transition Matrix API", () => {
     expect(response.body.currentStatus).toBe("IN_PROGRESS");
   });
 
+  it("rejects a stale update when the Ticket changed after it was loaded", async () => {
+    // The user loaded the Ticket as IN_PROGRESS, then someone else moved it
+    // to WAITING_FOR_REQUESTER. CANCELLED is valid from both statuses, so
+    // only the expectedStatus check can stop the unseen overwrite.
+    await setTestTicketStatus("WAITING_FOR_REQUESTER");
+    const cookies = await login("it.alex@example.com");
+
+    const response = await request(app)
+      .patch(`/api/tickets/${testTicketId}/status`)
+      .set("Cookie", cookies)
+      .send({
+        status: "CANCELLED",
+        expectedStatus: "IN_PROGRESS",
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe("STALE_UPDATE");
+
+    const ticket = await getPrisma().ticket.findUnique({
+      where: {
+        id: testTicketId as number,
+      },
+      select: {
+        currentStatus: true,
+      },
+    });
+
+    expect(ticket?.currentStatus).toBe("WAITING_FOR_REQUESTER");
+  });
+
+  it("applies the change when expectedStatus matches the current status", async () => {
+    await setTestTicketStatus("OPEN");
+    const cookies = await login("it.alex@example.com");
+
+    const response = await request(app)
+      .patch(`/api/tickets/${testTicketId}/status`)
+      .set("Cookie", cookies)
+      .send({
+        status: "IN_PROGRESS",
+        expectedStatus: "OPEN",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.currentStatus).toBe("IN_PROGRESS");
+  });
+
   it("rejects a Requester status change", async () => {
     await setTestTicketStatus("OPEN");
     const cookies = await login("jennifer.anderson@example.com");

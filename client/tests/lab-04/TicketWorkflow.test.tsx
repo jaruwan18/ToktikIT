@@ -132,6 +132,7 @@ describe("Lab 4 - Ticket Workflow", () => {
     });
     expect(JSON.parse(String(options?.body))).toEqual({
       status: "IN_PROGRESS",
+      expectedStatus: "OPEN",
     });
     expect(
       await screen.findByText("Status changed to In Progress."),

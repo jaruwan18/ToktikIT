@@ -939,6 +939,7 @@ const TICKET_STATUS_ERROR_MESSAGES: Record<string, string> = {
 export async function updateTicketStatus(
   ticketId: number,
   status: CurrentStatus,
+  expectedStatus: CurrentStatus,
 ): Promise<TicketStatusUpdateResult> {
   let response: Response;
 
@@ -951,7 +952,7 @@ export async function updateTicketStatus(
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, expectedStatus }),
       },
     );
   } catch {
@@ -1198,4 +1199,4 @@ export async function setAdminUserInitialPassword(
   };
 
   return data.user;
-}
+}

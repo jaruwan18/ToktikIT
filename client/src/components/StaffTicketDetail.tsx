@@ -603,4 +603,4 @@ export default function StaffTicketDetail({
       </div>
     </section>
   );
-}
+}
