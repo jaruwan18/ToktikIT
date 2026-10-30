@@ -598,4 +598,4 @@ main()
   })
   .finally(async () => {
     await getPrisma().$disconnect();
-  });
+  });
