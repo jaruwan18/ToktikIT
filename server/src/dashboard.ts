@@ -1,0 +1,255 @@
+import { Router, Request, Response } from "express";
+import { CurrentStatus, ItPriority, Prisma, Role } from "@prisma/client";
+import { getPrisma } from "./prisma.js";
+import { requireRole } from "./authorization.js";
+
+export const dashboardRouter = Router();
+
+// Lab 4 dashboard calculation rules (docs/lab-04/api-spec.md sections 9-13).
+
+// Statuses where work is still expected from IT Staff or the Requester.
+export const ACTIVE_STATUSES: CurrentStatus[] = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING_FOR_REQUESTER",
+  "REOPENED",
+];
+
+const ALL_STATUSES: CurrentStatus[] = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING_FOR_REQUESTER",
+  "RESOLVED",
+  "CLOSED",
+  "REOPENED",
+  "CANCELLED",
+];
+
+const ALL_IT_PRIORITIES: ItPriority[] = ["LOW", "MEDIUM", "HIGH"];
+
+// Rolling recent window: from (now - 7 days) up to now.
+export const RECENT_WINDOW_DAYS = 7;
+
+const LIST_LIMIT = 5;
+
+const ticketSummarySelect = {
+  id: true,
+  ticketNumber: true,
+  summary: true,
+  currentStatus: true,
+  itPriority: true,
+  updatedAt: true,
+} satisfies Prisma.TicketSelect;
+
+function getRecentWindowStart(now: Date): Date {
+  return new Date(
+    now.getTime() - RECENT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  );
+}
+
+function sendDashboardError(res: Response, error: unknown, route: string) {
+  console.error(`${route} failed:`, error);
+
+  return res.status(500).json({
+    error: "INTERNAL_ERROR",
+    message: "Unable to load dashboard data.",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/dashboard/requester
+// Requester Dashboard. The requester is always derived from the session;
+// any requesterId supplied by the client is ignored.
+// ---------------------------------------------------------------------------
+
+dashboardRouter.get(
+  "/requester",
+  requireRole(Role.REQUESTER),
+  async (req: Request, res: Response) => {
+    try {
+      const prisma = getPrisma();
+      const now = new Date();
+      const windowStart = getRecentWindowStart(now);
+
+      const requester = await prisma.requester.findUnique({
+        where: {
+          userId: req.session.userId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      // A Requester user without a requester profile owns no Tickets.
+      const requesterId = requester?.id ?? -1;
+      const ownTickets = { requesterId };
+
+      const [
+        totalOpen,
+        waitingForRequester,
+        recentlyUpdated,
+        recentlyResolved,
+        recentTickets,
+      ] = await Promise.all([
+        prisma.ticket.count({
+          where: {
+            ...ownTickets,
+            currentStatus: { in: ACTIVE_STATUSES },
+          },
+        }),
+        prisma.ticket.count({
+          where: {
+            ...ownTickets,
+            currentStatus: "WAITING_FOR_REQUESTER",
+          },
+        }),
+        prisma.ticket.count({
+          where: {
+            ...ownTickets,
+            updatedAt: { gte: windowStart, lte: now },
+          },
+        }),
+        prisma.ticket.count({
+          where: {
+            ...ownTickets,
+            currentStatus: { in: ["RESOLVED", "CLOSED"] },
+            updatedAt: { gte: windowStart, lte: now },
+          },
+        }),
+        prisma.ticket.findMany({
+          where: ownTickets,
+          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+          take: LIST_LIMIT,
+          select: ticketSummarySelect,
+        }),
+      ]);
+
+      return res.status(200).json({
+        metrics: {
+          totalOpen,
+          waitingForRequester,
+          recentlyUpdated,
+          recentlyResolved,
+        },
+        recentTickets,
+        recentWindow: {
+          days: RECENT_WINDOW_DAYS,
+          from: windowStart.toISOString(),
+          to: now.toISOString(),
+        },
+      });
+    } catch (error) {
+      return sendDashboardError(
+        res,
+        error,
+        "GET /api/dashboard/requester",
+      );
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/dashboard/staff
+// IT Staff Dashboard (also used by Administrators).
+// ---------------------------------------------------------------------------
+
+dashboardRouter.get(
+  "/staff",
+  requireRole(Role.IT_STAFF, Role.ADMIN),
+  async (req: Request, res: Response) => {
+    try {
+      const prisma = getPrisma();
+      const now = new Date();
+      const windowStart = getRecentWindowStart(now);
+      const currentUserId = req.session.userId as number;
+      const activeTickets = {
+        currentStatus: { in: ACTIVE_STATUSES },
+      };
+
+      const [
+        unassigned,
+        currentUserOwned,
+        statusGroups,
+        priorityGroups,
+        myActionsTaken,
+        urgentTickets,
+        recentTickets,
+      ] = await Promise.all([
+        prisma.ticket.count({
+          where: { ...activeTickets, ownerId: null },
+        }),
+        prisma.ticket.count({
+          where: { ...activeTickets, ownerId: currentUserId },
+        }),
+        prisma.ticket.groupBy({
+          by: ["currentStatus"],
+          _count: { _all: true },
+        }),
+        prisma.ticket.groupBy({
+          by: ["itPriority"],
+          where: activeTickets,
+          _count: { _all: true },
+        }),
+        prisma.actionTaken.count({
+          where: {
+            performedById: currentUserId,
+            actionDateTime: { gte: windowStart, lte: now },
+          },
+        }),
+        prisma.ticket.findMany({
+          where: { ...activeTickets, itPriority: "HIGH" },
+          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+          take: LIST_LIMIT,
+          select: ticketSummarySelect,
+        }),
+        prisma.ticket.findMany({
+          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+          take: LIST_LIMIT,
+          select: ticketSummarySelect,
+        }),
+      ]);
+
+      // Zero-fill so every status and priority is always present.
+      const byStatus = Object.fromEntries(
+        ALL_STATUSES.map((status) => [
+          status,
+          statusGroups.find((group) => group.currentStatus === status)
+            ?._count._all ?? 0,
+        ]),
+      );
+
+      const byItPriority = Object.fromEntries(
+        ALL_IT_PRIORITIES.map((priority) => [
+          priority,
+          priorityGroups.find((group) => group.itPriority === priority)
+            ?._count._all ?? 0,
+        ]),
+      );
+
+      return res.status(200).json({
+        metrics: {
+          unassigned,
+          currentUserOwned,
+          myActionsTaken,
+          byStatus,
+          byItPriority,
+        },
+        urgentTickets,
+        recentTickets,
+        recentWindow: {
+          days: RECENT_WINDOW_DAYS,
+          from: windowStart.toISOString(),
+          to: now.toISOString(),
+        },
+      });
+    } catch (error) {
+      return sendDashboardError(
+        res,
+        error,
+        "GET /api/dashboard/staff",
+      );
+    }
+  },
+);

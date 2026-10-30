@@ -370,6 +370,68 @@ async function main() {
     },
   });
 
+  // Lab 4: additional Tickets so every status, unassigned ownership and
+  // zero/non-zero dashboard metrics can be demonstrated. The 9000xx numbers
+  // stay clear of the sequence used for Tickets created in the app.
+  const lab4Tickets = [
+    {
+      ticketNumber: "TKT-2026-900005",
+      requesterId: jennifer.id,
+      categoryId: softwareCategory.id,
+      relatedSystemId: leb2App.id,
+      ownerId: null,
+      summary: "Request to install statistics software",
+      description: "The requester needs a statistics package installed for a course.",
+      requestedPriority: RequestedPriority.LOW,
+      itPriority: ItPriority.LOW,
+      currentStatus: CurrentStatus.NEW,
+    },
+    {
+      ticketNumber: "TKT-2026-900006",
+      requesterId: michael.id,
+      categoryId: hardwareCategory.id,
+      relatedSystemId: corporateLaptop.id,
+      ownerId: jordan.id,
+      summary: "Laptop keyboard keys not responding",
+      description: "Several keys stopped working; the keyboard was replaced.",
+      requestedPriority: RequestedPriority.MEDIUM,
+      itPriority: ItPriority.LOW,
+      currentStatus: CurrentStatus.CLOSED,
+    },
+    {
+      ticketNumber: "TKT-2026-900007",
+      requesterId: sarah.id,
+      categoryId: networkCategory.id,
+      relatedSystemId: campusWifi.id,
+      ownerId: alex.id,
+      summary: "Wi-Fi drops again in the library",
+      description: "The earlier fix did not hold; the connection drops every few minutes.",
+      requestedPriority: RequestedPriority.HIGH,
+      itPriority: ItPriority.MEDIUM,
+      currentStatus: CurrentStatus.REOPENED,
+    },
+    {
+      ticketNumber: "TKT-2026-900008",
+      requesterId: david.id,
+      categoryId: accountCategory.id,
+      relatedSystemId: emailSystem.id,
+      ownerId: null,
+      summary: "Duplicate request for email access",
+      description: "Submitted twice by mistake; the original Ticket covers this request.",
+      requestedPriority: RequestedPriority.LOW,
+      itPriority: ItPriority.LOW,
+      currentStatus: CurrentStatus.CANCELLED,
+    },
+  ];
+
+  for (const { ticketNumber, ...data } of lab4Tickets) {
+    await prisma.ticket.upsert({
+      where: { ticketNumber },
+      update: data,
+      create: { ticketNumber, ...data },
+    });
+  }
+
   // Seed public comments and internal notes
   await prisma.ticketMessage.deleteMany({
     where: {
@@ -523,7 +585,7 @@ async function main() {
   console.log(`Seeded ${REQUESTERS.length} requesters.`);
   console.log(`Seeded ${RELATED_SYSTEMS.length} related systems.`);
   console.log(`Seeded ${USERS.length} users.`);
-  console.log("Seeded 4 sample tickets.");
+  console.log("Seeded 8 sample tickets (all Ticket statuses).");
   console.log("Seeded public comments and internal notes.");
   console.log("Seeded 5 Actions Taken: ticket1=2, ticket2=1, ticket3=0, ticket4=2.");
   console.log(`Initial password: ${INITIAL_PASSWORD}`);
@@ -536,4 +598,4 @@ main()
   })
   .finally(async () => {
     await getPrisma().$disconnect();
-  });
+  });

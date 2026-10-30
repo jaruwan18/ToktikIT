@@ -17,6 +17,7 @@ import {
 import { requireRole } from "./authorization.js";
 import { adminUsersRouter } from "./adminUsers.js";
 import { actionsTakenRouter } from "./actionsTaken.js";
+import { dashboardRouter } from "./dashboard.js";
 
 
 export const app = express();
@@ -35,6 +36,7 @@ app.use(sessionMiddleware);
 app.use("/api/auth", authRouter);
 app.use("/api/admin", adminUsersRouter);
 app.use("/api/tickets", actionsTakenRouter);
+app.use("/api/dashboard", dashboardRouter);
 
 // ---------------------------------------------------------------------------
 // GET /api/it/tickets
@@ -112,6 +114,13 @@ app.get(
         ["LOW", "MEDIUM", "HIGH"].includes(itPriority ?? "")
       ) {
         where.itPriority = itPriority;
+      }
+
+      // Lab 4: dashboard drill-down filter for Ticket ownership.
+      if (req.query.owner === "unassigned") {
+        where.ownerId = null;
+      } else if (req.query.owner === "me") {
+        where.ownerId = req.session.userId;
       }
 
       const skip = (page - 1) * pageSize;
