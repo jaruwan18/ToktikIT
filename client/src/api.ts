@@ -447,6 +447,7 @@ export async function createTicket(
   input: CreateTicketInput,
 ): Promise<CreatedTicket> {
   const response = await fetch(`${API_URL}/api/tickets`, {
+    credentials: "include",
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -609,6 +610,9 @@ export async function getTicketDetail(
 
   const response = await fetch(
     `${API_URL}/api/tickets/${ticketId}?${searchParams.toString()}`,
+    {
+      credentials: "include",
+    },
   );
 
   if (!response.ok) {
@@ -735,6 +739,7 @@ export async function uploadAttachment(
   const response = await fetch(
     `${API_URL}/api/tickets/${ticketId}/attachments`,
     {
+    credentials: "include",
       method: "POST",
       headers: {
         "X-Requester-Id": String(requesterId),
@@ -771,6 +776,7 @@ export async function downloadAttachment(
   const response = await fetch(
     `${API_URL}/api/attachments/${attachmentId}/download`,
     {
+    credentials: "include",
       headers: {
         "X-Requester-Id": String(requesterId),
       },
@@ -806,6 +812,7 @@ export async function removeAttachment(
   const response = await fetch(
     `${API_URL}/api/attachments/${attachmentId}`,
     {
+    credentials: "include",
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import StaffDashboard from "../../src/components/StaffDashboard.js";
@@ -180,6 +181,42 @@ describe("Lab 4 - IT Staff Dashboard", () => {
       { itPriority: "HIGH", statusGroup: "active" },
       "IT Priority: High",
     );
+  });
+
+  it("lets keyboard users reach and open metric cards", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(buildDashboard()),
+    );
+    const user = userEvent.setup();
+
+    const { onDrillDown } = renderDashboard();
+
+    await screen.findByRole("button", {
+      name: "Unassigned Tickets: 2. View tickets",
+    });
+
+    // Refresh is the first control, the Unassigned card is next.
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Refresh" })).toHaveFocus();
+    await user.tab();
+    expect(
+      screen.getByRole("button", {
+        name: "Unassigned Tickets: 2. View tickets",
+      }),
+    ).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(onDrillDown).toHaveBeenCalledWith(
+      { owner: "unassigned", statusGroup: "active" },
+      "Unassigned Tickets",
+    );
+
+    // My Actions Taken is informational, so Tab skips it.
+    await user.tab();
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: "New: 2. View tickets" }),
+    ).toHaveFocus();
   });
 
   it("lists urgent Tickets that open Ticket Detail", async () => {
