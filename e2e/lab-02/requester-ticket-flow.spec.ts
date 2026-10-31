@@ -1,8 +1,14 @@
 import { test, expect } from "../../client/node_modules/@playwright/test/index.js";
 
 test.describe("Lab 2 - Requester Ticket Flow", () => {
+  // Since Lab 3 the app requires login, and the Requester comes from the
+  // session instead of the old requester selector.
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
+
+    await page.locator("#login-email").fill("jennifer.anderson@example.com");
+    await page.locator("#login-password").fill("Password123!");
+    await page.getByRole("button", { name: "Login", exact: true }).click();
 
     await expect(
       page.getByRole("heading", { name: "My Tickets" }),
@@ -43,21 +49,11 @@ test.describe("Lab 2 - Requester Ticket Flow", () => {
     );
   });
 
-  test("E2E-02: requester can switch requester and view their own ticket list", async ({
+  test("E2E-02: requester sees their own ticket list without choosing a requester", async ({
     page,
   }) => {
-    const requesterSelector = page.locator("#requester-selector");
-
-    await expect(requesterSelector).toBeVisible();
-    await expect(requesterSelector).toBeEnabled();
-
-    const options = await requesterSelector.locator("option").all();
-
-    expect(options.length).toBeGreaterThanOrEqual(2);
-
-    await requesterSelector.selectOption("2");
-
-    await expect(requesterSelector).toHaveValue("2");
+    await expect(page.getByText("Jennifer Anderson")).toBeVisible();
+    await expect(page.locator("#requester-selector")).toHaveCount(0);
 
     await expect(
       page.getByRole("heading", { name: "My Tickets" }),

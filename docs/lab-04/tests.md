@@ -1179,6 +1179,35 @@ The E2E flow shall verify:
 
 ---
 
+## 18.4 Implemented E2E Tests
+
+Run with the server, client and seeded database running:
+
+```text
+npx playwright test e2e/lab-04
+```
+
+Each test creates its own Ticket through the API, so the suite can run repeatedly.
+
+| File | Test | Covers | Acceptance Criteria |
+| --- | --- | --- | --- |
+| `e2e/lab-04/actions-taken-flow.spec.ts` | IT Staff records and edits an Action Taken; the Requester can only view it | §18.1 steps 1-9, plus the Follow-up Note validation | AC-01, AC-03, AC-05 |
+| `e2e/lab-04/ticket-resolution.spec.ts` | a Ticket is resolved only after a complete Action Taken, then closed and reopened | §18.2 steps 1-8 (only permitted options shown, resolve rejected without an Action, then Resolved, Closed, Reopened) | AC-06, AC-07 |
+| `e2e/lab-04/ticket-resolution.spec.ts` | the API rejects a transition the UI does not offer | NEW to CLOSED returns `409 INVALID_STATUS_TRANSITION` | AC-06 (backend enforcement) |
+| `e2e/lab-04/dashboards.spec.ts` | Requester dashboard shows only the Requester's own Tickets and drills down to matching lists | §18.3 Requester 1-5; another Requester's new Ticket is not shown; each card total equals the My Tickets total | AC-02, AC-09 |
+| `e2e/lab-04/dashboards.spec.ts` | IT Staff dashboard cards drill down to queue lists with the same totals | §18.3 IT Staff 1-4 (Unassigned, My Owned, Waiting for Requester, Closed, High) | AC-08, AC-09 |
+| `e2e/lab-04/dashboards.spec.ts` | Requesters cannot open the IT Staff dashboard data | §18.3 Requester 6; `GET /api/dashboard/staff` returns 403 | AC-02, AC-10 |
+| `e2e/lab-04/dashboards.spec.ts` | dashboards are usable on a mobile screen | 390px viewport, no horizontal scroll | AC-13 |
+
+The Requester empty state is covered by API-RD-09 and the RequesterDashboard UI test, because the seeded Requester without Tickets (`emily.johnson`) is inactive and cannot log in.
+
+### Regressions found by the E2E tests
+
+* `e2e/lab-02/requester-ticket-flow.spec.ts` still opened the app without logging in and used the Lab 2 requester selector. It now logs in as a Requester, and E2E-02 checks that the selector is gone.
+* Create Ticket, Requester Ticket Detail and the attachment requests were sent without `credentials: "include"`, so Create Ticket failed with "You must be logged in." after the Lab 3 login change. Fixed in the Dashboard UI PR (#75), with the regression test `client/tests/lab-04/RequesterSessionRequests.test.tsx` (fails without the fix). E2E-01 in Lab 2 now covers Create Ticket end to end.
+
+---
+
 # 19. Acceptance Criteria Traceability
 
 Every acceptance criterion in `specification.md` must map to at least one planned test.
@@ -1187,17 +1216,17 @@ Every acceptance criterion in `specification.md` must map to at least one planne
 | ----------------------------------- | ---------------------------------------------------------------- |
 | AC-01 Actions Taken Creation        | API-AT-06, API-AT-07, E2E Actions Taken                          |
 | AC-02 Requester Dashboard Ownership | API-RD-03, API-RD-04, E2E Dashboard                              |
-| AC-03 Requester Actions Read-only   | API-AT-04, API-AT-05, ActionsTaken UI                            |
+| AC-03 Requester Actions Read-only   | API-AT-04, API-AT-05, ActionsTaken UI, E2E Actions Taken         |
 | AC-04 Multiple Actions              | API-AT-13, Migration/Seed Tests                                  |
-| AC-05 Follow-up Validation          | API-AT-10, ActionsTaken UI                                       |
-| AC-06 Ticket Status Validation      | API-WF-03 to API-WF-14, TicketWorkflow UI                        |
+| AC-05 Follow-up Validation          | API-AT-10, ActionsTaken UI, E2E Actions Taken                    |
+| AC-06 Ticket Status Validation      | API-WF-03 to API-WF-14, TicketWorkflow UI, Ticket Resolution E2E |
 | AC-07 Resolution Gate               | API-WF-15, Ticket Resolution E2E                                 |
 | AC-08 Dashboard Metrics             | API-RD-05 to API-RD-08, API-SD-05 to API-SD-09                   |
 | AC-09 Dashboard Drill-down          | Dashboard UI tests, Dashboard E2E                                |
-| AC-10 Authorization                 | API-AT-01 to API-AT-05, API-WF-01/02, API-RD-01/04, API-SD-01/02 |
+| AC-10 Authorization                 | API-AT-01 to API-AT-05, API-WF-01/02, API-RD-01/04, API-SD-01/02, E2E Dashboard (Requester 403) |
 | AC-11 Conflict Handling             | API-WF-16, conflict UI tests                                     |
-| AC-12 Regression                    | Lab 1-3 regression suite                                         |
-| AC-13 Responsive UI                 | Responsive tests                                                 |
+| AC-12 Regression                    | Lab 1-3 regression suite, Lab 2-3 E2E, RequesterSessionRequests  |
+| AC-13 Responsive UI                 | Responsive tests, E2E Dashboard (390px)                          |
 | AC-14 Accessibility                 | Accessibility tests                                              |
 | AC-15 Seed and Migration            | Migration Tests, Seed Tests                                      |
 
