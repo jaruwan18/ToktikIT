@@ -737,6 +737,20 @@ The test shall verify:
 * metric drill-down works
 * role restrictions work
 
+Implemented in `client/tests/lab-04/StaffDashboard.test.tsx` (11 tests):
+
+* loading state shows no zero values and disables Refresh
+* metrics, all 8 status cards and 3 IT Priority cards render from the API
+* My Actions Taken is informational (not a button)
+* drill-down passes the API `drillDown` filter (Unassigned, IT Priority High)
+* urgent Tickets open Ticket Detail
+* empty state: "No Tickets currently require attention."
+* forbidden (403) hides dashboard data and offers no Retry
+* API failure shows a safe message and Retry reloads
+* IT Ticket Queue drill-down: sends `owner`/`statusGroup`, pre-selects the status filter, shows a "From dashboard" banner, and "Show all Tickets" removes the filter
+
+Role restriction for the screen is enforced by navigation (Staff Dashboard renders only for IT_STAFF and ADMIN) and by the API (API-SD tests).
+
 ---
 
 ## 8.2 RequesterDashboard
@@ -761,6 +775,21 @@ The test shall verify:
 * API failure state displays
 * drill-down works
 * My Tickets is not unnecessarily duplicated
+
+Implemented in `client/tests/lab-04/RequesterDashboard.test.tsx` (10 tests):
+
+* loading state shows no zero values
+* calls `GET /api/dashboard/requester` with no requester id, and the screen has no input for one
+* the four metrics render from the API
+* drill-down passes the API `drillDown` filter (Waiting for Requester, Recently Resolved)
+* a recent Ticket opens Ticket Detail
+* empty state shows zero values and "You have no Tickets requiring attention." without an error
+* forbidden (403) hides dashboard data
+* API failure shows a safe message (no backend details) and Retry reloads
+* network failure shows a connection message
+* `getTickets` sends `statusGroup` and `updatedWithinDays` to My Tickets
+
+The dashboard shows at most 5 recent Tickets and links to My Tickets instead of duplicating the full list.
 
 ---
 

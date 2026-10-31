@@ -62,6 +62,17 @@ export interface TicketListItem {
 
 export type ItPriority = "LOW" | "MEDIUM" | "HIGH";
 
+// Lab 4 dashboard drill-down filters accepted by the Ticket list endpoints.
+export type StatusGroup = "active" | "resolved";
+
+export interface DrillDownFilter {
+  currentStatus?: CurrentStatus;
+  itPriority?: ItPriority;
+  statusGroup?: StatusGroup;
+  updatedWithinDays?: number;
+  owner?: "unassigned" | "me";
+}
+
 export interface ItTicketListItem {
   id: number;
   ticketNumber: string;
@@ -96,10 +107,8 @@ export interface ItTicketListResponse {
   };
 }
 
-export interface ItTicketListParams {
+export interface ItTicketListParams extends DrillDownFilter {
   search?: string;
-  currentStatus?: CurrentStatus;
-  itPriority?: ItPriority;
   page?: number;
   pageSize?: number;
 }
@@ -122,6 +131,8 @@ export interface TicketListParams {
   categoryId?: number;
   requestedPriority?: RequestedPriority;
   currentStatus?: CurrentStatus;
+  statusGroup?: StatusGroup;
+  updatedWithinDays?: number;
   sortBy?: "ticketNumber" | "createdAt" | "updatedAt" | "summary";
   sortOrder?: "asc" | "desc";
   page?: number;
@@ -465,6 +476,26 @@ export async function createTicket(
   return response.json();
 }
 
+function appendDrillDownParams(
+  searchParams: URLSearchParams,
+  filter: DrillDownFilter,
+) {
+  if (filter.statusGroup) {
+    searchParams.set("statusGroup", filter.statusGroup);
+  }
+
+  if (filter.updatedWithinDays !== undefined) {
+    searchParams.set(
+      "updatedWithinDays",
+      String(filter.updatedWithinDays),
+    );
+  }
+
+  if (filter.owner) {
+    searchParams.set("owner", filter.owner);
+  }
+}
+
 export async function getTickets(
   params: TicketListParams,
 ): Promise<TicketListResponse> {
@@ -490,6 +521,11 @@ export async function getTickets(
   if (params.currentStatus) {
     searchParams.set("currentStatus", params.currentStatus);
   }
+
+  appendDrillDownParams(searchParams, {
+    statusGroup: params.statusGroup,
+    updatedWithinDays: params.updatedWithinDays,
+  });
 
   if (params.sortBy) {
     searchParams.set("sortBy", params.sortBy);
@@ -537,6 +573,8 @@ export async function getItTickets(
   if (params.itPriority) {
     searchParams.set("itPriority", params.itPriority);
   }
+
+  appendDrillDownParams(searchParams, params);
 
   if (params.page !== undefined) {
     searchParams.set("page", String(params.page));
@@ -986,6 +1024,117 @@ export async function updateTicketStatus(
   return response.json();
 }
 
+
+// ---------------------------------------------------------------------------
+// Lab 4 - Dashboards
+// ---------------------------------------------------------------------------
+
+export interface DashboardTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  currentStatus: CurrentStatus;
+  itPriority: ItPriority;
+  updatedAt: string;
+}
+
+export interface DashboardRecentWindow {
+  days: number;
+  from: string;
+  to: string;
+}
+
+export interface RequesterDashboardData {
+  metrics: {
+    totalOpen: number;
+    waitingForRequester: number;
+    recentlyUpdated: number;
+    recentlyResolved: number;
+  };
+  recentTickets: DashboardTicket[];
+  recentWindow: DashboardRecentWindow;
+  drillDown: {
+    totalOpen: DrillDownFilter;
+    waitingForRequester: DrillDownFilter;
+    recentlyUpdated: DrillDownFilter;
+    recentlyResolved: DrillDownFilter;
+  };
+}
+
+export interface StaffDashboardData {
+  metrics: {
+    unassigned: number;
+    currentUserOwned: number;
+    myActionsTaken: number;
+    byStatus: Record<CurrentStatus, number>;
+    byItPriority: Record<ItPriority, number>;
+  };
+  urgentTickets: DashboardTicket[];
+  recentTickets: DashboardTicket[];
+  recentWindow: DashboardRecentWindow;
+  drillDown: {
+    unassigned: DrillDownFilter;
+    currentUserOwned: DrillDownFilter;
+    byStatus: Record<CurrentStatus, DrillDownFilter>;
+    byItPriority: Record<ItPriority, DrillDownFilter>;
+  };
+}
+
+export class DashboardError extends Error {
+  code: "UNAUTHORIZED" | "FORBIDDEN" | "FAILED";
+
+  constructor(code: DashboardError["code"], message: string) {
+    super(message);
+    this.name = "DashboardError";
+    this.code = code;
+  }
+}
+
+async function getDashboard<T>(path: string): Promise<T> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/api/dashboard/${path}`, {
+      credentials: "include",
+    });
+  } catch {
+    throw new DashboardError(
+      "FAILED",
+      "Unable to load dashboard data. Check your connection and try again.",
+    );
+  }
+
+  if (response.status === 401) {
+    throw new DashboardError(
+      "UNAUTHORIZED",
+      "Your session has expired. Please log in again.",
+    );
+  }
+
+  if (response.status === 403) {
+    throw new DashboardError(
+      "FORBIDDEN",
+      "You do not have permission to view this dashboard.",
+    );
+  }
+
+  if (!response.ok) {
+    throw new DashboardError(
+      "FAILED",
+      "Unable to load dashboard data. Please try again.",
+    );
+  }
+
+  return response.json();
+}
+
+export function getRequesterDashboard(): Promise<RequesterDashboardData> {
+  return getDashboard<RequesterDashboardData>("requester");
+}
+
+export function getStaffDashboard(): Promise<StaffDashboardData> {
+  return getDashboard<StaffDashboardData>("staff");
+}
 
 // ---------------------------------------------------------------------------
 // Lab 3 - Administrator User Management
