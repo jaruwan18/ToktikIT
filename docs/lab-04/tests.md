@@ -537,6 +537,8 @@ Test file:
 server/tests/lab-04/requester-dashboard.api.test.ts
 ```
 
+Implementation note: the test creates its own Requester users and Tickets with known statuses and `updatedAt` values, so every metric is checked against an exact expected value. It covers API-RD-01 to API-RD-10 (IT Staff calling this endpoint receives 403). It also checks that each `drillDown` filter on `GET /api/tickets` returns exactly the counted number of Tickets, and that a database failure returns a safe `500 INTERNAL_ERROR`.
+
 ## API-RD-01 Unauthenticated Access
 
 Unauthenticated users requesting the Requester Dashboard receive:
@@ -632,6 +634,8 @@ Test file:
 ```text
 server/tests/lab-04/staff-dashboard.api.test.ts
 ```
+
+Implementation note: per-user metrics (`currentUserOwned`, `myActionsTaken`) use a dedicated test IT Staff user with known data. Global metrics (`unassigned`, `byStatus`, `byItPriority`) are compared with the same Prisma query the contract defines. The file also checks that each `drillDown` filter on `GET /api/it/tickets` (`owner`, `statusGroup`, `currentStatus`, `itPriority`) returns exactly the counted number of Tickets. It covers API-SD-01 to API-SD-10.
 
 ## API-SD-01 Unauthenticated Access
 

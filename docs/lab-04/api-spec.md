@@ -648,51 +648,44 @@ Example:
   "metrics": {
     "totalOpen": 3,
     "waitingForRequester": 1,
-    "recentlyUpdated": 2,
+    "recentlyUpdated": 4,
     "recentlyResolved": 1
   },
   "recentTickets": [
     {
-      "id": "ticket-id",
+      "id": 12,
       "ticketNumber": "TKT-2026-000001",
-      "title": "Cannot access internal system",
-      "status": "In Progress",
-      "priority": "HIGH",
-      "updatedAt": "2026-10-07T11:30:00.000Z"
+      "summary": "Corporate laptop cannot start",
+      "currentStatus": "IN_PROGRESS",
+      "itPriority": "HIGH",
+      "updatedAt": "2026-10-30T11:30:00.000Z"
     }
-  ]
+  ],
+  "recentWindow": {
+    "days": 7,
+    "from": "2026-10-23T11:30:00.000Z",
+    "to": "2026-10-30T11:30:00.000Z"
+  }
 }
 ```
 
-The response must contain only data belonging to the authenticated Requester.
+Field names and enum values are the same as the existing Ticket APIs (`currentStatus`, `itPriority`, numeric `id`). The response must contain only data belonging to the authenticated Requester.
 
 ---
 
 ## 9.3 Requester Dashboard Metrics
 
-### totalOpen
+All counts are limited to Tickets whose `requesterId` is the Requester profile linked to the authenticated user. Active statuses are `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER` and `REOPENED`.
 
-Number of Tickets owned by the authenticated Requester that are considered open according to the approved workflow.
+| Metric | Calculation | Drill-down |
+| --- | --- | --- |
+| `totalOpen` | Own Tickets with an active status | My Tickets `statusGroup=active` |
+| `waitingForRequester` | Own Tickets with status `WAITING_FOR_REQUESTER` | My Tickets `currentStatus=WAITING_FOR_REQUESTER` |
+| `recentlyUpdated` | Own Tickets with `updatedAt` inside the recent window (§13) | My Tickets `updatedWithinDays=7` |
+| `recentlyResolved` | Own Tickets with status `RESOLVED` or `CLOSED` and `updatedAt` inside the recent window | My Tickets `statusGroup=resolved&updatedWithinDays=7` |
+| `recentTickets` | The 5 most recently updated own Tickets, newest first (ties by id) | Ticket Detail |
 
-The exact status set must remain consistent with the application workflow.
-
-### waitingForRequester
-
-Number of Tickets owned by the authenticated Requester whose current status is:
-
-```text
-Waiting for Requester
-```
-
-### recentlyUpdated
-
-Number of the authenticated Requester's Tickets updated within the recent time window defined by this API contract and application timezone.
-
-### recentlyResolved
-
-Number of the authenticated Requester's Tickets resolved within the recent time window defined by this API contract and application timezone.
-
----
+The schema has no separate resolved timestamp, so `recentlyResolved` uses the Ticket's `updatedAt`. A later edit to a resolved Ticket therefore keeps it in the metric for another 7 days; this is an accepted simplification.
 
 ## 9.4 Requester Dashboard Ownership Protection
 
@@ -704,7 +697,9 @@ The following type of request must not be trusted:
 GET /api/dashboard/requester?requesterId=another-user-id
 ```
 
-A Requester must never be able to use a supplied ID to access another Requester's dashboard data.
+A Requester must never be able to use a supplied ID to access another Requester's dashboard data. The implementation ignores any `requesterId` query parameter.
+
+IT Staff and Admin users calling this endpoint receive `403 Forbidden`; they use the IT Staff Dashboard. A Requester user without a linked Requester profile receives the empty dashboard.
 
 ---
 
@@ -720,7 +715,8 @@ If the authenticated Requester has no matching Tickets:
     "recentlyUpdated": 0,
     "recentlyResolved": 0
   },
-  "recentTickets": []
+  "recentTickets": [],
+  "recentWindow": { "days": 7, "from": "...", "to": "..." }
 }
 ```
 
@@ -772,88 +768,75 @@ Example:
   "metrics": {
     "unassigned": 2,
     "currentUserOwned": 4,
+    "myActionsTaken": 3,
     "byStatus": {
-      "New": 1,
-      "Open": 2,
-      "In Progress": 3,
-      "Waiting for Requester": 1,
-      "Resolved": 2,
-      "Closed": 5,
-      "Reopened": 1,
-      "Cancelled": 0
+      "NEW": 1,
+      "OPEN": 2,
+      "IN_PROGRESS": 3,
+      "WAITING_FOR_REQUESTER": 1,
+      "RESOLVED": 2,
+      "CLOSED": 5,
+      "REOPENED": 1,
+      "CANCELLED": 0
     },
-    "byPriority": {
+    "byItPriority": {
       "LOW": 2,
       "MEDIUM": 4,
-      "HIGH": 5,
-      "URGENT": 1
+      "HIGH": 1
     }
   },
-  "recentTickets": [
+  "urgentTickets": [
     {
-      "id": "ticket-id",
-      "ticketNumber": "TKT-2026-000001",
-      "title": "Cannot access internal system",
-      "status": "In Progress",
-      "priority": "HIGH",
-      "updatedAt": "2026-10-07T11:30:00.000Z"
+      "id": 3,
+      "ticketNumber": "TKT-2026-000003",
+      "summary": "Campus Wi-Fi connection is unstable",
+      "currentStatus": "OPEN",
+      "itPriority": "HIGH",
+      "updatedAt": "2026-10-30T11:30:00.000Z"
     }
-  ]
+  ],
+  "recentTickets": [],
+  "recentWindow": {
+    "days": 7,
+    "from": "2026-10-23T11:30:00.000Z",
+    "to": "2026-10-30T11:30:00.000Z"
+  }
 }
 ```
 
-The response should contain concise operational information rather than returning the complete Ticket collection.
+The response contains concise operational information rather than the complete Ticket collection. Administrators receive the same dashboard (SELab4.pdf §4.6 allows reuse).
 
 ---
 
 # 11. IT Staff Dashboard Metrics
 
-## 11.1 Unassigned
+Active statuses are `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER` and `REOPENED`. IT Priority values are the existing `ItPriority` enum (`LOW`, `MEDIUM`, `HIGH`); no new values are introduced.
 
-Number of Tickets that do not currently have a Ticket Owner/assignee according to the existing application data model.
+| Metric | Calculation | Drill-down |
+| --- | --- | --- |
+| `unassigned` | Active Tickets with `ownerId = null` | IT Ticket Queue `owner=unassigned&statusGroup=active` |
+| `currentUserOwned` | Active Tickets with `ownerId` = authenticated user | IT Ticket Queue `owner=me&statusGroup=active` |
+| `myActionsTaken` | Actions Taken with `performedById` = authenticated user and `actionDateTime` inside the recent window | None (counts actions, not Tickets) |
+| `byStatus` | Count of all Tickets per status; every status is present, zero-filled | IT Ticket Queue `currentStatus=<STATUS>` |
+| `byItPriority` | Count of active Tickets per IT Priority; zero-filled | IT Ticket Queue `itPriority=<PRIORITY>&statusGroup=active` |
+| `urgentTickets` | Up to 5 active Tickets with IT Priority `HIGH`, most recently updated first | Ticket Detail |
+| `recentTickets` | Up to 5 Tickets, most recently updated first (ties by id) | Ticket Detail |
 
-The calculation must follow the existing Ticket ownership model.
+## 11.1 Drill-down Query Parameters
 
----
+Every dashboard response includes a `drillDown` object that gives, for each metric, the query parameters of the Ticket list that contains exactly the counted Tickets (`GET /api/tickets` for the Requester dashboard, `GET /api/it/tickets` for the IT Staff dashboard). The UI should use these values instead of building its own filters, so the list total always equals the card value.
 
-## 11.2 Current User Owned
+The list endpoints accept these optional parameters in addition to their Lab 2/3 filters:
 
-Number of accessible Tickets currently assigned to the authenticated IT Staff user according to the existing Ticket ownership/assignment model.
+| Parameter | Endpoints | Meaning |
+| --- | --- | --- |
+| `currentStatus=<STATUS>` | both | One Ticket status. My Tickets now accepts all 8 statuses (Lab 2 accepted only `NEW`). |
+| `statusGroup=active` | both | Status is `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER` or `REOPENED` |
+| `statusGroup=resolved` | both | Status is `RESOLVED` or `CLOSED` |
+| `updatedWithinDays=<1-365>` | both | `updatedAt` within the last N days |
+| `owner=unassigned` / `owner=me` | `GET /api/it/tickets` | No owner / owned by the authenticated user |
 
-This metric must not expose Tickets that the authenticated user is not authorized to access.
-
----
-
-## 11.3 Status Summary
-
-The API may return counts grouped by the supported Ticket statuses:
-
-```text
-New
-Open
-In Progress
-Waiting for Requester
-Resolved
-Closed
-Reopened
-Cancelled
-```
-
----
-
-## 11.4 Priority Summary
-
-The API may return counts grouped by the existing Ticket priority values.
-
-The API must use the priority values already defined by the application rather than introducing new priority values only for the dashboard.
-
----
-
-## 11.5 Recently Updated Tickets
-
-The API may return a concise list of recently updated accessible Tickets.
-
-The recent time window must use the same application timezone and date boundary convention defined by the dashboard implementation.
+Invalid values are ignored, as with the existing filters. Requester ownership is still enforced on `GET /api/tickets` before any filter is applied.
 
 ---
 
@@ -889,15 +872,11 @@ The frontend is responsible for navigating to the appropriate detailed or filter
 
 # 13. Dashboard Date and Time Convention
 
-Dashboard calculations involving recent records must use:
+The recent window is a rolling 7 days: from `now - 7 days` (inclusive) to `now` (inclusive), where `now` is the server time of the request. Comparisons use the stored UTC timestamps (`updatedAt` for Tickets, `actionDateTime` for Actions Taken). The UI displays dates in the application timezone (Asia/Bangkok, UTC+7).
 
-* an explicit time window
-* a consistent application timezone
-* clearly defined start and end boundaries
+Each dashboard response returns the window it used in `recentWindow` (`days`, `from`, `to`) so the UI, tests and evidence can show the exact boundary.
 
-The API implementation must document the final selected recent time window before the dashboard feature is considered complete.
-
-The same rule must be used consistently by:
+The same rule is used by:
 
 * Requester Dashboard
 * IT Staff Dashboard
