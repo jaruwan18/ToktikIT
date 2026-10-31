@@ -17,24 +17,36 @@ import {
   type RequestedPriority,
   type CurrentStatus,
   type CurrentUser,
+  type DrillDownFilter,
 } from "./api.js";
 import Login from "./components/Login.js";
 import ChangePassword from "./components/ChangePassword.js";
 import ActionsTaken from "./components/ActionsTaken.js";
 
 import AdminUserManagement from "./components/AdminUserManagement.js";
-import StaffTicketQueue from "./components/StaffTicketQueue.js";
+import StaffTicketQueue, {
+  type QueueDrillDown,
+} from "./components/StaffTicketQueue.js";
+import RequesterDashboard from "./components/RequesterDashboard.js";
+import StaffDashboard from "./components/StaffDashboard.js";
+import {
+  STATUS_LABELS,
+  STATUS_ORDER,
+  describeDrillDown,
+} from "./components/DashboardParts.js";
 import StaffTicketDetail from "./components/StaffTicketDetail.js";
 
 type Priority = "" | RequestedPriority;
-type Status = "" | "NEW";
+type Status = "" | CurrentStatus;
 type Screen =
   | "my-tickets"
   | "create-ticket"
   | "ticket-detail"
   | "admin-users"
   | "staff-queue" 
-  | "staff-ticket-detail";
+  | "staff-ticket-detail"
+  | "requester-dashboard"
+  | "staff-dashboard";
 
 
 interface TicketDetail {
@@ -157,6 +169,14 @@ export default function App() {
     useState<Priority>("");
   const [currentStatus, setCurrentStatus] = useState<Status>("");
 
+  // Lab 4: filters applied when My Tickets / the IT Ticket Queue is opened
+  // from a dashboard metric card.
+  const [myTicketsDrillDown, setMyTicketsDrillDown] =
+    useState<QueueDrillDown | null>(null);
+  const [staffDrillDown, setStaffDrillDown] =
+    useState<QueueDrillDown | null>(null);
+  const [staffQueueKey, setStaffQueueKey] = useState(0);
+
   const [sortBy, setSortBy] = useState<SortBy>("createdAt");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
@@ -188,7 +208,8 @@ export default function App() {
     search.trim() !== "" ||
     categoryId !== "" ||
     requestedPriority !== "" ||
-    currentStatus !== "";
+    currentStatus !== "" ||
+    myTicketsDrillDown !== null;
 
 
   async function loadTickets() {
@@ -213,6 +234,9 @@ export default function App() {
         requestedPriority:
           requestedPriority || undefined,
         currentStatus: currentStatus || undefined,
+        statusGroup: myTicketsDrillDown?.filter.statusGroup,
+        updatedWithinDays:
+          myTicketsDrillDown?.filter.updatedWithinDays,
         sortBy,
         sortOrder,
         page,
@@ -275,6 +299,7 @@ export default function App() {
     categoryId,
     requestedPriority,
     currentStatus,
+    myTicketsDrillDown,
     sortBy,
     sortOrder,
     page,
@@ -514,7 +539,41 @@ export default function App() {
     setCategoryId("");
     setRequestedPriority("");
     setCurrentStatus("");
+    setMyTicketsDrillDown(null);
     setPage(1);
+  }
+
+  function openRequesterDrillDown(
+    filter: DrillDownFilter,
+    label: string,
+  ) {
+    setSearch("");
+    setCategoryId("");
+    setRequestedPriority("");
+    setCurrentStatus(filter.currentStatus ?? "");
+    setMyTicketsDrillDown({ filter, label });
+    setPage(1);
+    setScreen("my-tickets");
+  }
+
+  function openStaffDrillDown(filter: DrillDownFilter, label: string) {
+    setStaffDrillDown({ filter, label });
+    setStaffQueueKey((key) => key + 1);
+    setScreen("staff-queue");
+  }
+
+  function openStaffQueue() {
+    setStaffDrillDown(null);
+    setStaffQueueKey((key) => key + 1);
+    setScreen("staff-queue");
+  }
+
+  function openDashboard() {
+    setScreen(
+      currentUser?.role === "REQUESTER"
+        ? "requester-dashboard"
+        : "staff-dashboard",
+    );
   }
 
   function goToPage(nextPage: number) {
@@ -622,6 +681,11 @@ export default function App() {
   }
 
   function openMyTickets() {
+    if (myTicketsDrillDown) {
+      setMyTicketsDrillDown(null);
+      setCurrentStatus("");
+      setPage(1);
+    }
     setCreateError("");
     setCreatedTicketNumber("");
     setScreen("my-tickets");
@@ -771,11 +835,17 @@ export default function App() {
   if (!currentUser) {
     return (
       <Login
-        onLogin={(user) => {
-          setCurrentUser({
-            ...user,
-            role: user.role as CurrentUser["role"],
-          });
+        onLogin={async (user) => {
+          // The login response has no requesterId, so load the full
+          // profile; otherwise My Tickets stays empty until a reload.
+          try {
+            setCurrentUser(await getCurrentUser());
+          } catch {
+            setCurrentUser({
+              ...user,
+              role: user.role as CurrentUser["role"],
+            });
+          }
         }}
       />
     );
@@ -798,7 +868,7 @@ export default function App() {
     <div className="min-vh-100">
       <header className="app-header text-white">
         <div className="container">
-          <div className="d-flex justify-content-between align-items-center gap-3">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div>
               <div className="fw-bold fs-5">
                 TokTickIT
@@ -808,8 +878,21 @@ export default function App() {
               </div>
             </div>
 
-            <div className="d-flex align-items-center gap-3">
-              <nav className="d-none d-md-flex gap-2">
+            <div className="d-flex flex-wrap align-items-center gap-3">
+              <nav className="d-flex flex-wrap gap-2" aria-label="Main">
+                <button
+                  type="button"
+                  className={`header-nav-button ${
+                    screen === "requester-dashboard" ||
+                    screen === "staff-dashboard"
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={openDashboard}
+                >
+                  Dashboard
+                </button>
+
                 <button
                   type="button"
                   className={`header-nav-button ${
@@ -833,7 +916,7 @@ export default function App() {
                         ? "active"
                         : ""
                     }`}
-                    onClick={() => setScreen("staff-queue")}
+                    onClick={openStaffQueue}
                >
                     IT Ticket Queue
                   </button>
@@ -907,8 +990,23 @@ export default function App() {
           currentUser.role === "ADMIN") &&
         screen === "staff-queue" ? (
           <StaffTicketQueue
+            key={staffQueueKey}
             onOpenTicket={openStaffTicketDetail}
+            drillDown={staffDrillDown}
         />
+        ) : (currentUser.role === "IT_STAFF" ||
+          currentUser.role === "ADMIN") &&
+        screen === "staff-dashboard" ? (
+          <StaffDashboard
+            onOpenTicket={openStaffTicketDetail}
+            onDrillDown={openStaffDrillDown}
+          />
+        ) : currentUser.role === "REQUESTER" &&
+        screen === "requester-dashboard" ? (
+          <RequesterDashboard
+            onOpenTicket={(ticketId) => void openTicketDetail(ticketId)}
+            onDrillDown={openRequesterDrillDown}
+          />
 
 
         ) : screen === "admin-users" ? (
@@ -1771,6 +1869,26 @@ export default function App() {
               </button>
             </div>
 
+            {myTicketsDrillDown ? (
+              <div className="drilldown-banner" role="status">
+                <span>
+                  <strong>
+                    From dashboard: {myTicketsDrillDown.label}
+                  </strong>
+                  <span className="d-block small text-muted">
+                    {describeDrillDown(myTicketsDrillDown.filter)}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-outline-success btn-sm"
+                  onClick={clearFilters}
+                >
+                  Show all Tickets
+                </button>
+              </div>
+            ) : null}
+
             <section className="zen-card shadow-sm mb-4">
               <div className="card-body">
                 <div className="row g-3">
@@ -1871,7 +1989,11 @@ export default function App() {
                       }}
                     >
                       <option value="">All</option>
-                      <option value="NEW">New</option>
+                      {STATUS_ORDER.map((status) => (
+                        <option key={status} value={status}>
+                          {STATUS_LABELS[status]}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
