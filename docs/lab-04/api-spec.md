@@ -466,11 +466,14 @@ Requester users do not directly perform formal Ticket status transitions.
 
 ```json
 {
-  "status": "In Progress"
+  "status": "IN_PROGRESS",
+  "expectedStatus": "OPEN"
 }
 ```
 
 The API shall validate the current Ticket status and the requested next status.
+
+`expectedStatus` is the status the client displayed when the user chose the change. If it no longer matches the stored status, the API returns `409 STALE_UPDATE` and changes nothing, so a user cannot unknowingly apply a transition to a Ticket someone else has just changed. The field is optional for compatibility with Lab 3 clients; the Lab 4 UI always sends it. The update itself is also a compare-and-set on the current status, which covers two requests arriving at the same moment.
 
 ---
 

@@ -6,6 +6,7 @@ import {
   expect,
   it,
 } from "vitest";
+import type { CurrentStatus } from "@prisma/client";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
 
@@ -46,7 +47,9 @@ async function getItStaffId(): Promise<number> {
   return user.id;
 }
 
-async function createTestTicket(): Promise<void> {
+async function createTestTicket(
+  currentStatus: CurrentStatus = "IN_PROGRESS",
+): Promise<void> {
   const prisma = getPrisma();
 
   const baseTicket = await prisma.ticket.findUnique({
@@ -74,7 +77,7 @@ async function createTestTicket(): Promise<void> {
       description: "Ticket created for isolated API testing.",
       requestedPriority: baseTicket.requestedPriority,
       itPriority: baseTicket.itPriority,
-      currentStatus: "IN_PROGRESS",
+      currentStatus,
     },
   });
 
@@ -293,5 +296,180 @@ describe("Lab 4 - Ticket Resolution Gate API", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.currentStatus).toBe("RESOLVED");
+  });
+});
+
+async function requestStatusChange(
+  cookies: string,
+  status: CurrentStatus,
+) {
+  if (testTicketId === null) {
+    throw new Error("Test ticket has not been created.");
+  }
+
+  return request(app)
+    .patch(`/api/tickets/${testTicketId}/status`)
+    .set("Cookie", cookies)
+    .send({
+      status,
+    });
+}
+
+async function setTestTicketStatus(
+  currentStatus: CurrentStatus,
+): Promise<void> {
+  if (testTicketId === null) {
+    throw new Error("Test ticket has not been created.");
+  }
+
+  await getPrisma().ticket.update({
+    where: {
+      id: testTicketId,
+    },
+    data: {
+      currentStatus,
+    },
+  });
+}
+
+describe("Lab 4 - Ticket Status Transition Matrix API", () => {
+  const permittedTransitions: Array<[CurrentStatus, CurrentStatus]> = [
+    ["NEW", "OPEN"],
+    ["NEW", "CANCELLED"],
+    ["OPEN", "IN_PROGRESS"],
+    ["OPEN", "WAITING_FOR_REQUESTER"],
+    ["OPEN", "CANCELLED"],
+    ["IN_PROGRESS", "WAITING_FOR_REQUESTER"],
+    ["IN_PROGRESS", "CANCELLED"],
+    ["WAITING_FOR_REQUESTER", "IN_PROGRESS"],
+    ["WAITING_FOR_REQUESTER", "CANCELLED"],
+    ["RESOLVED", "CLOSED"],
+    ["RESOLVED", "REOPENED"],
+    ["CLOSED", "REOPENED"],
+    ["REOPENED", "IN_PROGRESS"],
+    ["REOPENED", "WAITING_FOR_REQUESTER"],
+    ["REOPENED", "CANCELLED"],
+  ];
+
+  it.each(permittedTransitions)(
+    "allows IT Staff to change %s to %s",
+    async (from, to) => {
+      await setTestTicketStatus(from);
+      const cookies = await login("it.alex@example.com");
+
+      const response = await requestStatusChange(cookies, to);
+
+      expect(response.status).toBe(200);
+      expect(response.body.currentStatus).toBe(to);
+    },
+  );
+
+  const rejectedTransitions: Array<[CurrentStatus, CurrentStatus]> = [
+    ["NEW", "IN_PROGRESS"],
+    ["OPEN", "RESOLVED"],
+    ["CLOSED", "IN_PROGRESS"],
+    ["CANCELLED", "OPEN"],
+    ["IN_PROGRESS", "IN_PROGRESS"],
+  ];
+
+  it.each(rejectedTransitions)(
+    "rejects changing %s to %s and keeps the Ticket unchanged",
+    async (from, to) => {
+      await setTestTicketStatus(from);
+      const cookies = await login("it.alex@example.com");
+
+      const response = await requestStatusChange(cookies, to);
+
+      expect(response.status).toBe(409);
+      expect(response.body.error).toBe("INVALID_STATUS_TRANSITION");
+
+      const ticket = await getPrisma().ticket.findUnique({
+        where: {
+          id: testTicketId as number,
+        },
+        select: {
+          currentStatus: true,
+        },
+      });
+
+      expect(ticket?.currentStatus).toBe(from);
+    },
+  );
+
+  it("rejects an unauthenticated status change", async () => {
+    await setTestTicketStatus("OPEN");
+
+    const response = await request(app)
+      .patch(`/api/tickets/${testTicketId}/status`)
+      .send({
+        status: "IN_PROGRESS",
+      });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("allows an Administrator to perform a permitted transition", async () => {
+    await setTestTicketStatus("OPEN");
+    const cookies = await login("admin@example.com");
+
+    const response = await requestStatusChange(cookies, "IN_PROGRESS");
+
+    expect(response.status).toBe(200);
+    expect(response.body.currentStatus).toBe("IN_PROGRESS");
+  });
+
+  it("rejects a stale update when the Ticket changed after it was loaded", async () => {
+    // The user loaded the Ticket as IN_PROGRESS, then someone else moved it
+    // to WAITING_FOR_REQUESTER. CANCELLED is valid from both statuses, so
+    // only the expectedStatus check can stop the unseen overwrite.
+    await setTestTicketStatus("WAITING_FOR_REQUESTER");
+    const cookies = await login("it.alex@example.com");
+
+    const response = await request(app)
+      .patch(`/api/tickets/${testTicketId}/status`)
+      .set("Cookie", cookies)
+      .send({
+        status: "CANCELLED",
+        expectedStatus: "IN_PROGRESS",
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe("STALE_UPDATE");
+
+    const ticket = await getPrisma().ticket.findUnique({
+      where: {
+        id: testTicketId as number,
+      },
+      select: {
+        currentStatus: true,
+      },
+    });
+
+    expect(ticket?.currentStatus).toBe("WAITING_FOR_REQUESTER");
+  });
+
+  it("applies the change when expectedStatus matches the current status", async () => {
+    await setTestTicketStatus("OPEN");
+    const cookies = await login("it.alex@example.com");
+
+    const response = await request(app)
+      .patch(`/api/tickets/${testTicketId}/status`)
+      .set("Cookie", cookies)
+      .send({
+        status: "IN_PROGRESS",
+        expectedStatus: "OPEN",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.currentStatus).toBe("IN_PROGRESS");
+  });
+
+  it("rejects a Requester status change", async () => {
+    await setTestTicketStatus("OPEN");
+    const cookies = await login("jennifer.anderson@example.com");
+
+    const response = await requestStatusChange(cookies, "IN_PROGRESS");
+
+    expect(response.status).toBe(403);
   });
 });

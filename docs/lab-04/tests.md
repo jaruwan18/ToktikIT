@@ -329,6 +329,8 @@ Test file:
 server/tests/lab-04/ticket-workflow.api.test.ts
 ```
 
+Implementation note: this file also contains the Resolution Gate tests that were first added as `ticket-resolution-gate.api.test.ts` in PR #69. It covers every permitted transition in the `api-spec.md` §5.3 matrix, a sample of rejected transitions, unauthenticated, Requester, IT Staff and Administrator access.
+
 ## API-WF-01 Authentication
 
 Unauthenticated status updates return:
@@ -514,6 +516,16 @@ Expected result:
 ```text
 409 Conflict
 ```
+
+Implemented in `ticket-workflow.api.test.ts`: the client sends `expectedStatus`; when it differs from the stored status the API returns `409 STALE_UPDATE` and the Ticket keeps its newer status.
+
+---
+
+## API-WF-17 Ticket Number Sequence Regression
+
+Test file: `server/tests/lab-04/ticket-number-sequence.api.test.ts`
+
+Given a Ticket number that is already used but not counted in this year's Ticket count (the situation left behind after Tickets are deleted), when a Requester creates a Ticket, the API returns `201 Created` with the next free number instead of `409 TICKET_NUMBER_CONFLICT`. Found while running the Lab 1-3 regression suite (`requester-auth.test.ts` failed with 409).
 
 ---
 
@@ -784,7 +796,7 @@ The test shall verify:
 Test file:
 
 ```text
-client/src/**/lab-04 tests/TicketWorkflow.test.tsx
+client/tests/lab-04/TicketWorkflow.test.tsx
 ```
 
 The test shall verify:
@@ -797,6 +809,8 @@ The test shall verify:
 * backend workflow errors display safely
 * successful transition refreshes Ticket summary
 * conflict/stale update state displays correctly
+
+Implementation note: the control is the `TicketWorkflow` component rendered only on the IT Staff Ticket Detail screen; the Requester Ticket Detail screen does not render it. The component test also checks that duplicate submission is blocked while saving and that a network failure shows a safe message.
 
 ---
 
