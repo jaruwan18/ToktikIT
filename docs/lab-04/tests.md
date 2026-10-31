@@ -1179,6 +1179,35 @@ The E2E flow shall verify:
 
 ---
 
+## 18.4 Implemented E2E Tests
+
+Run with the server, client and seeded database running:
+
+```text
+npx playwright test e2e/lab-04
+```
+
+Each test creates its own Ticket through the API, so the suite can run repeatedly.
+
+| File | Test | Covers |
+| --- | --- | --- |
+| `e2e/lab-04/actions-taken-flow.spec.ts` | IT Staff records and edits an Action Taken; the Requester can only view it | §18.1 steps 1-9, plus the Follow-up Note validation |
+| `e2e/lab-04/ticket-resolution.spec.ts` | a Ticket is resolved only after a complete Action Taken, then closed and reopened | §18.2 steps 1-8 (only permitted options shown, resolve rejected without an Action, then Resolved, Closed, Reopened) |
+| `e2e/lab-04/ticket-resolution.spec.ts` | the API rejects a transition the UI does not offer | NEW to CLOSED returns `409 INVALID_STATUS_TRANSITION` |
+| `e2e/lab-04/dashboards.spec.ts` | Requester dashboard shows only the Requester's own Tickets and drills down to matching lists | §18.3 Requester 1-5; another Requester's new Ticket is not shown; each card total equals the My Tickets total |
+| `e2e/lab-04/dashboards.spec.ts` | IT Staff dashboard cards drill down to queue lists with the same totals | §18.3 IT Staff 1-4 (Unassigned, My Owned, Waiting for Requester, Closed, High) |
+| `e2e/lab-04/dashboards.spec.ts` | Requesters cannot open the IT Staff dashboard data | §18.3 Requester 6; `GET /api/dashboard/staff` returns 403 |
+| `e2e/lab-04/dashboards.spec.ts` | dashboards are usable on a mobile screen | 390px viewport, no horizontal scroll |
+
+The Requester empty state is covered by API-RD-09 and the RequesterDashboard UI test, because the seeded Requester without Tickets (`emily.johnson`) is inactive and cannot log in.
+
+### Regressions found by the E2E tests
+
+* `e2e/lab-02/requester-ticket-flow.spec.ts` still opened the app without logging in and used the Lab 2 requester selector. It now logs in as a Requester, and E2E-02 checks that the selector is gone.
+* Create Ticket, Requester Ticket Detail and the attachment requests were sent without `credentials: "include"`, so Create Ticket failed with "You must be logged in." after the Lab 3 login change. Fixed in the Dashboard UI PR (#75), with the regression test `client/tests/lab-04/RequesterSessionRequests.test.tsx` (fails without the fix). E2E-01 in Lab 2 now covers Create Ticket end to end.
+
+---
+
 # 19. Acceptance Criteria Traceability
 
 Every acceptance criterion in `specification.md` must map to at least one planned test.
