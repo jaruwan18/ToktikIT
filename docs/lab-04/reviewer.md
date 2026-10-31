@@ -178,9 +178,3 @@ Every Lab 4 feature branch was merged into `lab4-staging` through a pull request
 1. One E2E test calls the API directly (NEW to CLOSED) and gets 409 `INVALID_STATUS_TRANSITION`. The server tests also cover the full transition matrix.
 2. **Updated:** added an Acceptance Criteria column to tests.md §18.4 and E2E references to the §19 traceability table.
 3. The branch includes the #75 fix (`bfe7a2a`). All 12 E2E tests (Lab 2: 3, Lab 3: 2, Lab 4: 7) passed on two consecutive runs.
-
----
-
-## Pull requests I reviewed for my partner
-
-<!-- Add the PRs you reviewed for your partner here (PR link, your comment, their response), or remove this section if not applicable. -->
