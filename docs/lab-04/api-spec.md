@@ -676,10 +676,10 @@ All counts are limited to Tickets whose `requesterId` is the Requester profile l
 
 | Metric | Calculation | Drill-down |
 | --- | --- | --- |
-| `totalOpen` | Own Tickets with an active status | My Tickets |
-| `waitingForRequester` | Own Tickets with status `WAITING_FOR_REQUESTER` | My Tickets filtered by `currentStatus=WAITING_FOR_REQUESTER` |
-| `recentlyUpdated` | Own Tickets with `updatedAt` inside the recent window (§13) | My Tickets sorted by last update |
-| `recentlyResolved` | Own Tickets with status `RESOLVED` or `CLOSED` and `updatedAt` inside the recent window | My Tickets filtered by `currentStatus=RESOLVED` |
+| `totalOpen` | Own Tickets with an active status | My Tickets `statusGroup=active` |
+| `waitingForRequester` | Own Tickets with status `WAITING_FOR_REQUESTER` | My Tickets `currentStatus=WAITING_FOR_REQUESTER` |
+| `recentlyUpdated` | Own Tickets with `updatedAt` inside the recent window (§13) | My Tickets `updatedWithinDays=7` |
+| `recentlyResolved` | Own Tickets with status `RESOLVED` or `CLOSED` and `updatedAt` inside the recent window | My Tickets `statusGroup=resolved&updatedWithinDays=7` |
 | `recentTickets` | The 5 most recently updated own Tickets, newest first (ties by id) | Ticket Detail |
 
 The schema has no separate resolved timestamp, so `recentlyResolved` uses the Ticket's `updatedAt`. A later edit to a resolved Ticket therefore keeps it in the metric for another 7 days; this is an accepted simplification.
@@ -811,15 +811,29 @@ Active statuses are `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER` and `R
 
 | Metric | Calculation | Drill-down |
 | --- | --- | --- |
-| `unassigned` | Active Tickets with `ownerId = null` | IT Ticket Queue `owner=unassigned` |
-| `currentUserOwned` | Active Tickets with `ownerId` = authenticated user | IT Ticket Queue `owner=me` |
-| `myActionsTaken` | Actions Taken with `performedById` = authenticated user and `actionDateTime` inside the recent window | Recent Tickets / Ticket Detail |
+| `unassigned` | Active Tickets with `ownerId = null` | IT Ticket Queue `owner=unassigned&statusGroup=active` |
+| `currentUserOwned` | Active Tickets with `ownerId` = authenticated user | IT Ticket Queue `owner=me&statusGroup=active` |
+| `myActionsTaken` | Actions Taken with `performedById` = authenticated user and `actionDateTime` inside the recent window | None (counts actions, not Tickets) |
 | `byStatus` | Count of all Tickets per status; every status is present, zero-filled | IT Ticket Queue `currentStatus=<STATUS>` |
-| `byItPriority` | Count of active Tickets per IT Priority; zero-filled | IT Ticket Queue `itPriority=<PRIORITY>` |
+| `byItPriority` | Count of active Tickets per IT Priority; zero-filled | IT Ticket Queue `itPriority=<PRIORITY>&statusGroup=active` |
 | `urgentTickets` | Up to 5 active Tickets with IT Priority `HIGH`, most recently updated first | Ticket Detail |
 | `recentTickets` | Up to 5 Tickets, most recently updated first (ties by id) | Ticket Detail |
 
-The existing `GET /api/it/tickets` endpoint accepts an optional `owner` query parameter for drill-down: `owner=unassigned` returns Tickets without an owner and `owner=me` returns Tickets owned by the authenticated user. Other values are ignored.
+## 11.1 Drill-down Query Parameters
+
+Every dashboard response includes a `drillDown` object that gives, for each metric, the query parameters of the Ticket list that contains exactly the counted Tickets (`GET /api/tickets` for the Requester dashboard, `GET /api/it/tickets` for the IT Staff dashboard). The UI should use these values instead of building its own filters, so the list total always equals the card value.
+
+The list endpoints accept these optional parameters in addition to their Lab 2/3 filters:
+
+| Parameter | Endpoints | Meaning |
+| --- | --- | --- |
+| `currentStatus=<STATUS>` | both | One Ticket status. My Tickets now accepts all 8 statuses (Lab 2 accepted only `NEW`). |
+| `statusGroup=active` | both | Status is `NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER` or `REOPENED` |
+| `statusGroup=resolved` | both | Status is `RESOLVED` or `CLOSED` |
+| `updatedWithinDays=<1-365>` | both | `updatedAt` within the last N days |
+| `owner=unassigned` / `owner=me` | `GET /api/it/tickets` | No owner / owned by the authenticated user |
+
+Invalid values are ignored, as with the existing filters. Requester ownership is still enforced on `GET /api/tickets` before any filter is applied.
 
 ---
 

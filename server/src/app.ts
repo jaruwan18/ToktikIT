@@ -17,7 +17,10 @@ import {
 import { requireRole } from "./authorization.js";
 import { adminUsersRouter } from "./adminUsers.js";
 import { actionsTakenRouter } from "./actionsTaken.js";
-import { dashboardRouter } from "./dashboard.js";
+import {
+  applyDrillDownFilters,
+  dashboardRouter,
+} from "./dashboard.js";
 
 
 export const app = express();
@@ -122,6 +125,8 @@ app.get(
       } else if (req.query.owner === "me") {
         where.ownerId = req.session.userId;
       }
+
+      applyDrillDownFilters(where, req.query);
 
       const skip = (page - 1) * pageSize;
 
@@ -1595,11 +1600,27 @@ app.get(
             req.query.currentStatus,
           );
 
-        if (status === "NEW") {
+        // Lab 4: all Ticket statuses can be filtered (Lab 2 allowed only
+        // NEW), so dashboard cards can drill down to My Tickets.
+        if (
+          [
+            "NEW",
+            "OPEN",
+            "IN_PROGRESS",
+            "WAITING_FOR_REQUESTER",
+            "RESOLVED",
+            "CLOSED",
+            "REOPENED",
+            "CANCELLED",
+          ].includes(status)
+        ) {
           where.currentStatus =
             status;
         }
       }
+
+      // Lab 4: dashboard drill-down filters.
+      applyDrillDownFilters(where, req.query);
 
       const allowedSortFields = [
         "createdAt",

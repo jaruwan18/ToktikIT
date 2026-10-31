@@ -6,6 +6,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 import type { CurrentStatus } from "@prisma/client";
 import { app } from "../../src/app.js";
@@ -218,5 +219,51 @@ describe("Lab 4 - Requester Dashboard API", () => {
       recentlyResolved: 0,
     });
     expect(response.body.recentTickets).toEqual([]);
+  });
+
+  it("drill-down filters on My Tickets return exactly the counted Tickets", async () => {
+    const cookies = await login(OWNER_EMAIL);
+
+    const dashboard = await request(app)
+      .get("/api/dashboard/requester")
+      .set("Cookie", cookies);
+
+    const { metrics, drillDown } = dashboard.body;
+
+    for (const metric of Object.keys(metrics)) {
+      const list = await request(app)
+        .get("/api/tickets")
+        .query({ ...drillDown[metric], pageSize: 50 })
+        .set("Cookie", cookies);
+
+      expect(list.status).toBe(200);
+      expect(list.body.pagination.total, metric).toBe(metrics[metric]);
+    }
+  });
+
+  it("returns a safe 500 error when the database fails", async () => {
+    const cookies = await login(OWNER_EMAIL);
+    const prisma = getPrisma();
+    const spy = vi
+      .spyOn(prisma.ticket, "count")
+      .mockRejectedValueOnce(new Error("database unavailable"));
+    const consoleSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      const response = await request(app)
+        .get("/api/dashboard/requester")
+        .set("Cookie", cookies);
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({
+        error: "INTERNAL_ERROR",
+        message: "Unable to load dashboard data.",
+      });
+    } finally {
+      spy.mockRestore();
+      consoleSpy.mockRestore();
+    }
   });
 });

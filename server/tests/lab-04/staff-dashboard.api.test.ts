@@ -267,21 +267,83 @@ describe("Lab 4 - IT Staff Dashboard API", () => {
   it("filters the IT Ticket Queue by owner for dashboard drill-down", async () => {
     const cookies = await login(STAFF_EMAIL);
 
-    const mine = await request(app)
+    const allMine = await request(app)
       .get("/api/it/tickets?owner=me&pageSize=50")
       .set("Cookie", cookies);
 
-    expect(mine.status).toBe(200);
-
-    const tickets = mine.body.data as Array<{
-      ticketNumber: string;
-    }>;
-
-    expect(tickets).toHaveLength(3);
+    expect(allMine.status).toBe(200);
+    expect(allMine.body.pagination.total).toBe(3);
     expect(
-      tickets.every((ticket) =>
-        ticket.ticketNumber.startsWith(`TKT-TEST-SDASH-${RUN_ID}`),
+      (allMine.body.data as Array<{ ticketNumber: string }>).every(
+        (ticket) =>
+          ticket.ticketNumber.startsWith(`TKT-TEST-SDASH-${RUN_ID}`),
       ),
     ).toBe(true);
+  });
+
+  it("drill-down for the current user's Tickets matches the metric", async () => {
+    const cookies = await login(STAFF_EMAIL);
+
+    const dashboard = await request(app)
+      .get("/api/dashboard/staff")
+      .set("Cookie", cookies);
+
+    const list = await request(app)
+      .get("/api/it/tickets")
+      .query({
+        ...dashboard.body.drillDown.currentUserOwned,
+        pageSize: 50,
+      })
+      .set("Cookie", cookies);
+
+    expect(list.body.pagination.total).toBe(
+      dashboard.body.metrics.currentUserOwned,
+    );
+  });
+
+  it("drill-down filters for global metrics return the counted Tickets", async () => {
+    const cookies = await login("it.alex@example.com");
+
+    const readMetric = (body: any, path: string[]) =>
+      path.reduce((value, key) => value[key], body.metrics);
+    const readDrillDown = (body: any, path: string[]) =>
+      path.reduce((value, key) => value[key], body.drillDown);
+
+    const metricPaths = [
+      ["unassigned"],
+      ["byStatus", "NEW"],
+      ["byStatus", "WAITING_FOR_REQUESTER"],
+      ["byStatus", "CLOSED"],
+      ["byItPriority", "HIGH"],
+      ["byItPriority", "LOW"],
+    ];
+
+    for (const path of metricPaths) {
+      let compared = false;
+
+      // Other test files change Tickets in parallel; compare only when the
+      // metric is the same before and after reading the list.
+      for (let attempt = 0; attempt < 5 && !compared; attempt += 1) {
+        const before = await request(app)
+          .get("/api/dashboard/staff")
+          .set("Cookie", cookies);
+        const list = await request(app)
+          .get("/api/it/tickets")
+          .query({ ...readDrillDown(before.body, path), pageSize: 50 })
+          .set("Cookie", cookies);
+        const after = await request(app)
+          .get("/api/dashboard/staff")
+          .set("Cookie", cookies);
+
+        if (readMetric(before.body, path) === readMetric(after.body, path)) {
+          expect(list.body.pagination.total, path.join(".")).toBe(
+            readMetric(before.body, path),
+          );
+          compared = true;
+        }
+      }
+
+      expect(compared, path.join(".")).toBe(true);
+    }
   });
 });

@@ -43,10 +43,49 @@ const ticketSummarySelect = {
   updatedAt: true,
 } satisfies Prisma.TicketSelect;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function getRecentWindowStart(now: Date): Date {
-  return new Date(
-    now.getTime() - RECENT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
-  );
+  return new Date(now.getTime() - RECENT_WINDOW_DAYS * DAY_MS);
+}
+
+const RESOLVED_STATUSES: CurrentStatus[] = ["RESOLVED", "CLOSED"];
+
+// Drill-down filters shared by the dashboard and the Ticket list endpoints
+// (GET /api/tickets and GET /api/it/tickets), so that following a dashboard
+// card returns exactly the Tickets the card counted.
+//   statusGroup=active    -> ACTIVE_STATUSES
+//   statusGroup=resolved  -> RESOLVED or CLOSED
+//   updatedWithinDays=N   -> updatedAt within the last N days (1-365)
+export function applyDrillDownFilters(
+  where: Prisma.TicketWhereInput,
+  query: Record<string, unknown>,
+): void {
+  const conditions: Prisma.TicketWhereInput[] = [];
+
+  if (query.statusGroup === "active") {
+    conditions.push({ currentStatus: { in: ACTIVE_STATUSES } });
+  } else if (query.statusGroup === "resolved") {
+    conditions.push({ currentStatus: { in: RESOLVED_STATUSES } });
+  }
+
+  const days = Number(query.updatedWithinDays);
+
+  if (Number.isInteger(days) && days >= 1 && days <= 365) {
+    conditions.push({
+      updatedAt: { gte: new Date(Date.now() - days * DAY_MS) },
+    });
+  }
+
+  if (conditions.length > 0) {
+    const existing = where.AND
+      ? Array.isArray(where.AND)
+        ? where.AND
+        : [where.AND]
+      : [];
+
+    where.AND = [...existing, ...conditions];
+  }
 }
 
 function sendDashboardError(res: Response, error: unknown, route: string) {
@@ -138,6 +177,17 @@ dashboardRouter.get(
           days: RECENT_WINDOW_DAYS,
           from: windowStart.toISOString(),
           to: now.toISOString(),
+        },
+        // Query parameters for GET /api/tickets that list exactly the
+        // Tickets behind each metric.
+        drillDown: {
+          totalOpen: { statusGroup: "active" },
+          waitingForRequester: { currentStatus: "WAITING_FOR_REQUESTER" },
+          recentlyUpdated: { updatedWithinDays: RECENT_WINDOW_DAYS },
+          recentlyResolved: {
+            statusGroup: "resolved",
+            updatedWithinDays: RECENT_WINDOW_DAYS,
+          },
         },
       });
     } catch (error) {
@@ -242,6 +292,25 @@ dashboardRouter.get(
           days: RECENT_WINDOW_DAYS,
           from: windowStart.toISOString(),
           to: now.toISOString(),
+        },
+        // Query parameters for GET /api/it/tickets that list exactly the
+        // Tickets behind each metric. myActionsTaken counts actions, not
+        // Tickets, so it has no Ticket list.
+        drillDown: {
+          unassigned: { owner: "unassigned", statusGroup: "active" },
+          currentUserOwned: { owner: "me", statusGroup: "active" },
+          byStatus: Object.fromEntries(
+            ALL_STATUSES.map((status) => [
+              status,
+              { currentStatus: status },
+            ]),
+          ),
+          byItPriority: Object.fromEntries(
+            ALL_IT_PRIORITIES.map((priority) => [
+              priority,
+              { itPriority: priority, statusGroup: "active" },
+            ]),
+          ),
         },
       });
     } catch (error) {
