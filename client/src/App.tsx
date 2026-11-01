@@ -553,6 +553,9 @@ export default function App() {
     setCurrentStatus(filter.currentStatus ?? "");
     setMyTicketsDrillDown({ filter, label });
     setPage(1);
+    // Show Loading until the filtered list arrives, so the previous
+    // list's total is never shown under the new drill-down label.
+    setLoading(true);
     setScreen("my-tickets");
   }
 
