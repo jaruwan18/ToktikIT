@@ -78,6 +78,7 @@ describe("GET /api/tickets/:id", () => {
     expect(response.status).toBe(200);
 
     expect(response.body).toEqual({
+      id: 101,
       ticketNumber: "TKT-2026-000101",
       requesterId: 1,
       requesterName: "Jennifer Anderson",

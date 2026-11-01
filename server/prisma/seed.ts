@@ -183,7 +183,7 @@ async function main() {
     });
 
     savedUsers.set(user.email, savedUser);
-    
+
     if (user.role === Role.REQUESTER) {
       await prisma.requester.update({
         where: { email: user.email },
@@ -370,6 +370,68 @@ async function main() {
     },
   });
 
+  // Lab 4: additional Tickets so every status, unassigned ownership and
+  // zero/non-zero dashboard metrics can be demonstrated. The 9000xx numbers
+  // stay clear of the sequence used for Tickets created in the app.
+  const lab4Tickets = [
+    {
+      ticketNumber: "TKT-2026-900005",
+      requesterId: jennifer.id,
+      categoryId: softwareCategory.id,
+      relatedSystemId: leb2App.id,
+      ownerId: null,
+      summary: "Request to install statistics software",
+      description: "The requester needs a statistics package installed for a course.",
+      requestedPriority: RequestedPriority.LOW,
+      itPriority: ItPriority.LOW,
+      currentStatus: CurrentStatus.NEW,
+    },
+    {
+      ticketNumber: "TKT-2026-900006",
+      requesterId: michael.id,
+      categoryId: hardwareCategory.id,
+      relatedSystemId: corporateLaptop.id,
+      ownerId: jordan.id,
+      summary: "Laptop keyboard keys not responding",
+      description: "Several keys stopped working; the keyboard was replaced.",
+      requestedPriority: RequestedPriority.MEDIUM,
+      itPriority: ItPriority.LOW,
+      currentStatus: CurrentStatus.CLOSED,
+    },
+    {
+      ticketNumber: "TKT-2026-900007",
+      requesterId: sarah.id,
+      categoryId: networkCategory.id,
+      relatedSystemId: campusWifi.id,
+      ownerId: alex.id,
+      summary: "Wi-Fi drops again in the library",
+      description: "The earlier fix did not hold; the connection drops every few minutes.",
+      requestedPriority: RequestedPriority.HIGH,
+      itPriority: ItPriority.MEDIUM,
+      currentStatus: CurrentStatus.REOPENED,
+    },
+    {
+      ticketNumber: "TKT-2026-900008",
+      requesterId: david.id,
+      categoryId: accountCategory.id,
+      relatedSystemId: emailSystem.id,
+      ownerId: null,
+      summary: "Duplicate request for email access",
+      description: "Submitted twice by mistake; the original Ticket covers this request.",
+      requestedPriority: RequestedPriority.LOW,
+      itPriority: ItPriority.LOW,
+      currentStatus: CurrentStatus.CANCELLED,
+    },
+  ];
+
+  for (const { ticketNumber, ...data } of lab4Tickets) {
+    await prisma.ticket.upsert({
+      where: { ticketNumber },
+      update: data,
+      create: { ticketNumber, ...data },
+    });
+  }
+
   // Seed public comments and internal notes
   await prisma.ticketMessage.deleteMany({
     where: {
@@ -426,12 +488,106 @@ async function main() {
     ],
   });
 
+  // Seed Actions Taken
+  //
+  // The seed intentionally represents:
+  // - ticket1: multiple Actions Taken
+  // - ticket2: one Action Taken
+  // - ticket3: zero Actions Taken
+  // - ticket4: multiple Actions Taken
+  //
+  // Existing Actions Taken for these seeded tickets are removed first so
+  // running the seed repeatedly does not create duplicate records.
+  await prisma.actionTaken.deleteMany({
+    where: {
+      ticketId: {
+        in: [ticket1.id, ticket2.id, ticket3.id, ticket4.id],
+      },
+    },
+  });
+
+  const actionDateBase = new Date("2026-10-01T09:00:00.000Z");
+
+  await prisma.actionTaken.createMany({
+    data: [
+      {
+        ticketId: ticket1.id,
+        actionDateTime: new Date(actionDateBase.getTime()),
+        actionDescription:
+          "Checked the power adapter and performed initial hardware diagnostics.",
+        result:
+          "Power adapter is functioning, but the laptop still does not start.",
+        performedById: alex.id,
+        followUpRequired: true,
+        followUpNote:
+          "Perform a deeper hardware diagnostic and inspect the internal power components.",
+        attachmentNotes: null,
+        idempotencyKey: "seed-action-ticket1-01",
+      },
+      {
+        ticketId: ticket1.id,
+        actionDateTime: new Date(actionDateBase.getTime() + 60 * 60 * 1000),
+        actionDescription:
+          "Ran additional hardware diagnostics and inspected the internal power connection.",
+        result:
+          "Hardware fault identified and replacement service is required.",
+        performedById: alex.id,
+        followUpRequired: false,
+        followUpNote: null,
+        attachmentNotes: "Hardware diagnostic report available for service review.",
+        idempotencyKey: "seed-action-ticket1-02",
+      },
+      {
+        ticketId: ticket2.id,
+        actionDateTime: new Date(actionDateBase.getTime() + 24 * 60 * 60 * 1000),
+        actionDescription:
+          "Reviewed the LEB2 submission error and checked the uploaded file format.",
+        result:
+          "The uploaded file format is valid; further requester information is required.",
+        performedById: jordan.id,
+        followUpRequired: true,
+        followUpNote:
+          "Ask the requester to provide the exact error message shown during submission.",
+        attachmentNotes: null,
+        idempotencyKey: "seed-action-ticket2-01",
+      },
+      {
+        ticketId: ticket4.id,
+        actionDateTime: new Date(actionDateBase.getTime() + 2 * 24 * 60 * 60 * 1000),
+        actionDescription:
+          "Verified the requester account and performed a password reset.",
+        result:
+          "Password reset completed successfully.",
+        performedById: taylor.id,
+        followUpRequired: true,
+        followUpNote:
+          "Wait for requester confirmation that email access has been restored.",
+        attachmentNotes: null,
+        idempotencyKey: "seed-action-ticket4-01",
+      },
+      {
+        ticketId: ticket4.id,
+        actionDateTime: new Date(actionDateBase.getTime() + 3 * 24 * 60 * 60 * 1000),
+        actionDescription:
+          "Confirmed the requester can sign in to the university email account.",
+        result:
+          "Requester confirmed that email access has been restored.",
+        performedById: taylor.id,
+        followUpRequired: false,
+        followUpNote: null,
+        attachmentNotes: null,
+        idempotencyKey: "seed-action-ticket4-02",
+      },
+    ],
+  });
+
   console.log(`Seeded ${CATEGORIES.length} categories.`);
   console.log(`Seeded ${REQUESTERS.length} requesters.`);
   console.log(`Seeded ${RELATED_SYSTEMS.length} related systems.`);
   console.log(`Seeded ${USERS.length} users.`);
-  console.log("Seeded 4 sample tickets.");
+  console.log("Seeded 8 sample tickets (all Ticket statuses).");
   console.log("Seeded public comments and internal notes.");
+  console.log("Seeded 5 Actions Taken: ticket1=2, ticket2=1, ticket3=0, ticket4=2.");
   console.log(`Initial password: ${INITIAL_PASSWORD}`);
 }
 

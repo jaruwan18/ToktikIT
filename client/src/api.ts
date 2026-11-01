@@ -62,6 +62,17 @@ export interface TicketListItem {
 
 export type ItPriority = "LOW" | "MEDIUM" | "HIGH";
 
+// Lab 4 dashboard drill-down filters accepted by the Ticket list endpoints.
+export type StatusGroup = "active" | "resolved";
+
+export interface DrillDownFilter {
+  currentStatus?: CurrentStatus;
+  itPriority?: ItPriority;
+  statusGroup?: StatusGroup;
+  updatedWithinDays?: number;
+  owner?: "unassigned" | "me";
+}
+
 export interface ItTicketListItem {
   id: number;
   ticketNumber: string;
@@ -96,10 +107,8 @@ export interface ItTicketListResponse {
   };
 }
 
-export interface ItTicketListParams {
+export interface ItTicketListParams extends DrillDownFilter {
   search?: string;
-  currentStatus?: CurrentStatus;
-  itPriority?: ItPriority;
   page?: number;
   pageSize?: number;
 }
@@ -122,6 +131,8 @@ export interface TicketListParams {
   categoryId?: number;
   requestedPriority?: RequestedPriority;
   currentStatus?: CurrentStatus;
+  statusGroup?: StatusGroup;
+  updatedWithinDays?: number;
   sortBy?: "ticketNumber" | "createdAt" | "updatedAt" | "summary";
   sortOrder?: "asc" | "desc";
   page?: number;
@@ -228,6 +239,39 @@ export interface ItTicketDetail {
   attachments: TicketAttachment[];
 }
 
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  actionDateTime: string;
+  actionDescription: string;
+  result: string;
+  performedById: number;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  performedBy: {
+    id: number;
+    displayName: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface CreateActionTakenInput {
+  actionDateTime: string;
+  actionDescription: string;
+  result: string;
+  followUpRequired: boolean;
+  followUpNote?: string;
+  attachmentNotes?: string;
+}
+
+export interface UpdateActionTakenInput
+  extends CreateActionTakenInput {
+  updatedAt: string;
+}
 
 export interface LoginResponse {
   user: CurrentUser;
@@ -403,6 +447,7 @@ export async function createTicket(
   input: CreateTicketInput,
 ): Promise<CreatedTicket> {
   const response = await fetch(`${API_URL}/api/tickets`, {
+    credentials: "include",
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -432,6 +477,26 @@ export async function createTicket(
   return response.json();
 }
 
+function appendDrillDownParams(
+  searchParams: URLSearchParams,
+  filter: DrillDownFilter,
+) {
+  if (filter.statusGroup) {
+    searchParams.set("statusGroup", filter.statusGroup);
+  }
+
+  if (filter.updatedWithinDays !== undefined) {
+    searchParams.set(
+      "updatedWithinDays",
+      String(filter.updatedWithinDays),
+    );
+  }
+
+  if (filter.owner) {
+    searchParams.set("owner", filter.owner);
+  }
+}
+
 export async function getTickets(
   params: TicketListParams,
 ): Promise<TicketListResponse> {
@@ -458,6 +523,11 @@ export async function getTickets(
     searchParams.set("currentStatus", params.currentStatus);
   }
 
+  appendDrillDownParams(searchParams, {
+    statusGroup: params.statusGroup,
+    updatedWithinDays: params.updatedWithinDays,
+  });
+
   if (params.sortBy) {
     searchParams.set("sortBy", params.sortBy);
   }
@@ -476,6 +546,9 @@ export async function getTickets(
 
   const response = await fetch(
     `${API_URL}/api/tickets?${searchParams.toString()}`,
+    {
+      credentials: "include",
+    },
   );
 
   if (!response.ok) {
@@ -501,6 +574,8 @@ export async function getItTickets(
   if (params.itPriority) {
     searchParams.set("itPriority", params.itPriority);
   }
+
+  appendDrillDownParams(searchParams, params);
 
   if (params.page !== undefined) {
     searchParams.set("page", String(params.page));
@@ -535,6 +610,9 @@ export async function getTicketDetail(
 
   const response = await fetch(
     `${API_URL}/api/tickets/${ticketId}?${searchParams.toString()}`,
+    {
+      credentials: "include",
+    },
   );
 
   if (!response.ok) {
@@ -661,6 +739,7 @@ export async function uploadAttachment(
   const response = await fetch(
     `${API_URL}/api/tickets/${ticketId}/attachments`,
     {
+    credentials: "include",
       method: "POST",
       headers: {
         "X-Requester-Id": String(requesterId),
@@ -697,6 +776,7 @@ export async function downloadAttachment(
   const response = await fetch(
     `${API_URL}/api/attachments/${attachmentId}/download`,
     {
+    credentials: "include",
       headers: {
         "X-Requester-Id": String(requesterId),
       },
@@ -732,6 +812,7 @@ export async function removeAttachment(
   const response = await fetch(
     `${API_URL}/api/attachments/${attachmentId}`,
     {
+    credentials: "include",
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -760,6 +841,306 @@ export async function removeAttachment(
   }
 
   return response.json();
+}
+// ---------------------------------------------------------------------------
+// Lab 4 - Actions Taken
+// ---------------------------------------------------------------------------
+
+export async function getTicketActions(
+  ticketId: number,
+): Promise<{ data: ActionTaken[] }> {
+  const response = await fetch(
+    `${API_URL}/api/tickets/${ticketId}/actions`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to retrieve Actions Taken.",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
+export async function createTicketAction(
+  ticketId: number,
+  input: CreateActionTakenInput,
+  idempotencyKey: string,
+): Promise<ActionTaken> {
+  const response = await fetch(
+    `${API_URL}/api/tickets/${ticketId}/actions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      credentials: "include",
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to create Action Taken.",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function updateTicketAction(
+  ticketId: number,
+  actionId: number,
+  input: UpdateActionTakenInput,
+): Promise<ActionTaken> {
+  const response = await fetch(
+    `${API_URL}/api/tickets/${ticketId}/actions/${actionId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Unable to update Action Taken.",
+      ),
+    );
+  }
+
+  return response.json();
+}
+
+// ---------------------------------------------------------------------------
+// Lab 4 - Ticket Workflow
+// ---------------------------------------------------------------------------
+
+// Mirrors the transition matrix in docs/lab-04/api-spec.md section 5.3.
+// The backend remains the authority; this only decides which options to show.
+export const ALLOWED_STATUS_TRANSITIONS: Record<
+  CurrentStatus,
+  CurrentStatus[]
+> = {
+  NEW: ["OPEN", "CANCELLED"],
+  OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "CANCELLED"],
+  IN_PROGRESS: ["WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"],
+  WAITING_FOR_REQUESTER: ["IN_PROGRESS", "RESOLVED", "CANCELLED"],
+  RESOLVED: ["CLOSED", "REOPENED"],
+  CLOSED: ["REOPENED"],
+  REOPENED: [
+    "IN_PROGRESS",
+    "WAITING_FOR_REQUESTER",
+    "RESOLVED",
+    "CANCELLED",
+  ],
+  CANCELLED: [],
+};
+
+export interface TicketStatusUpdateResult {
+  id: number;
+  ticketNumber: string;
+  currentStatus: CurrentStatus;
+  updatedAt: string;
+}
+
+export class TicketStatusError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "TicketStatusError";
+    this.code = code;
+  }
+}
+
+const TICKET_STATUS_ERROR_MESSAGES: Record<string, string> = {
+  RESOLUTION_NOT_ALLOWED:
+    "This Ticket cannot be resolved yet. The latest Action Taken needs an Action Description and a Result, plus a Follow-up Note when follow-up is required.",
+  INVALID_STATUS_TRANSITION:
+    "This status change is not allowed from the current status. Refresh the Ticket and try again.",
+  STALE_UPDATE:
+    "The Ticket status was changed by someone else. Refresh the Ticket and try again.",
+  FORBIDDEN:
+    "You do not have permission to change this Ticket's status.",
+};
+
+export async function updateTicketStatus(
+  ticketId: number,
+  status: CurrentStatus,
+  expectedStatus: CurrentStatus,
+): Promise<TicketStatusUpdateResult> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${API_URL}/api/tickets/${ticketId}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ status, expectedStatus }),
+      },
+    );
+  } catch {
+    throw new TicketStatusError(
+      "NETWORK_ERROR",
+      "Unable to reach the server. Your selection was kept; please try again.",
+    );
+  }
+
+  if (!response.ok) {
+    let code = response.status === 403 ? "FORBIDDEN" : "UNKNOWN";
+
+    try {
+      const errorData =
+        (await response.json()) as ApiErrorResponse;
+
+      if (typeof errorData.error === "string") {
+        code = errorData.error;
+      }
+    } catch {
+      // Keep the status-based code when the response is not JSON.
+    }
+
+    throw new TicketStatusError(
+      code,
+      TICKET_STATUS_ERROR_MESSAGES[code] ??
+        "Unable to change the Ticket status. Please try again.",
+    );
+  }
+
+  return response.json();
+}
+
+
+// ---------------------------------------------------------------------------
+// Lab 4 - Dashboards
+// ---------------------------------------------------------------------------
+
+export interface DashboardTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  currentStatus: CurrentStatus;
+  itPriority: ItPriority;
+  updatedAt: string;
+}
+
+export interface DashboardRecentWindow {
+  days: number;
+  from: string;
+  to: string;
+}
+
+export interface RequesterDashboardData {
+  metrics: {
+    totalOpen: number;
+    waitingForRequester: number;
+    recentlyUpdated: number;
+    recentlyResolved: number;
+  };
+  recentTickets: DashboardTicket[];
+  recentWindow: DashboardRecentWindow;
+  drillDown: {
+    totalOpen: DrillDownFilter;
+    waitingForRequester: DrillDownFilter;
+    recentlyUpdated: DrillDownFilter;
+    recentlyResolved: DrillDownFilter;
+  };
+}
+
+export interface StaffDashboardData {
+  metrics: {
+    unassigned: number;
+    currentUserOwned: number;
+    myActionsTaken: number;
+    byStatus: Record<CurrentStatus, number>;
+    byItPriority: Record<ItPriority, number>;
+  };
+  urgentTickets: DashboardTicket[];
+  recentTickets: DashboardTicket[];
+  recentWindow: DashboardRecentWindow;
+  drillDown: {
+    unassigned: DrillDownFilter;
+    currentUserOwned: DrillDownFilter;
+    byStatus: Record<CurrentStatus, DrillDownFilter>;
+    byItPriority: Record<ItPriority, DrillDownFilter>;
+  };
+}
+
+export class DashboardError extends Error {
+  code: "UNAUTHORIZED" | "FORBIDDEN" | "FAILED";
+
+  constructor(code: DashboardError["code"], message: string) {
+    super(message);
+    this.name = "DashboardError";
+    this.code = code;
+  }
+}
+
+async function getDashboard<T>(path: string): Promise<T> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/api/dashboard/${path}`, {
+      credentials: "include",
+    });
+  } catch {
+    throw new DashboardError(
+      "FAILED",
+      "Unable to load dashboard data. Check your connection and try again.",
+    );
+  }
+
+  if (response.status === 401) {
+    throw new DashboardError(
+      "UNAUTHORIZED",
+      "Your session has expired. Please log in again.",
+    );
+  }
+
+  if (response.status === 403) {
+    throw new DashboardError(
+      "FORBIDDEN",
+      "You do not have permission to view this dashboard.",
+    );
+  }
+
+  if (!response.ok) {
+    throw new DashboardError(
+      "FAILED",
+      "Unable to load dashboard data. Please try again.",
+    );
+  }
+
+  return response.json();
+}
+
+export function getRequesterDashboard(): Promise<RequesterDashboardData> {
+  return getDashboard<RequesterDashboardData>("requester");
+}
+
+export function getStaffDashboard(): Promise<StaffDashboardData> {
+  return getDashboard<StaffDashboardData>("staff");
 }
 
 // ---------------------------------------------------------------------------
@@ -800,7 +1181,12 @@ export interface SetInitialPasswordInput {
 }
 
 interface ApiErrorResponse {
-  error?: string;
+  error?:
+    | string
+    | {
+        code?: string;
+        message?: string;
+      };
   message?: string;
   fields?: Record<string, string>;
 }
@@ -820,19 +1206,31 @@ async function getApiErrorMessage(
       return Object.values(errorData.fields).join(" ");
     }
 
+    // รองรับรูปแบบ { error: { code, message } }
+    if (
+      typeof errorData.error === "object" &&
+      errorData.error !== null &&
+      typeof errorData.error.message === "string"
+    ) {
+      return errorData.error.message;
+    }
+
+    // รองรับรูปแบบ { message: "..." }
     if (typeof errorData.message === "string") {
       return errorData.message;
     }
 
+    // รองรับรูปแบบ { error: "..." }
     if (typeof errorData.error === "string") {
       return errorData.error;
     }
   } catch {
-    // Keep fallback when the response is not JSON.
+    // ใช้ fallback เมื่อ response ไม่ใช่ JSON
   }
 
   return fallback;
 }
+
 
 export async function getAdminUsers(
   search = "",

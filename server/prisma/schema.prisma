@@ -55,6 +55,7 @@ model User {
   requester    Requester?
   ownedTickets Ticket[]        @relation("TicketOwner")
   messages     TicketMessage[] @relation("MessageAuthor")
+  actionsTaken ActionTaken[] @relation("ActionTakenPerformer")
 }
 
 model Requester {
@@ -107,6 +108,7 @@ model Ticket {
   owner         User?         @relation("TicketOwner", fields: [ownerId], references: [id])
   attachments   Attachment[]
   messages      TicketMessage[]
+  actionsTaken ActionTaken[]
 
   @@index([requesterId])
   @@index([categoryId])
@@ -146,4 +148,26 @@ model TicketMessage {
 
   @@index([ticketId])
   @@index([authorId])
+}
+
+model ActionTaken {
+  id               Int      @id @default(autoincrement())
+  ticketId         Int
+  actionDateTime   DateTime
+  actionDescription String
+  result           String
+  performedById    Int
+  followUpRequired Boolean  @default(false)
+  followUpNote     String?
+  attachmentNotes  String?
+  idempotencyKey   String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  ticket      Ticket @relation(fields: [ticketId], references: [id])
+  performedBy User   @relation("ActionTakenPerformer", fields: [performedById], references: [id])
+
+  @@index([ticketId])
+  @@index([actionDateTime])
+  @@index([performedById])
 }

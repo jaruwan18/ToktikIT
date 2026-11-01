@@ -16,6 +16,12 @@ import {
 } from "./auth.js";
 import { requireRole } from "./authorization.js";
 import { adminUsersRouter } from "./adminUsers.js";
+import { actionsTakenRouter } from "./actionsTaken.js";
+import {
+  applyDrillDownFilters,
+  dashboardRouter,
+} from "./dashboard.js";
+
 
 export const app = express();
 
@@ -32,6 +38,8 @@ app.use(sessionMiddleware);
 
 app.use("/api/auth", authRouter);
 app.use("/api/admin", adminUsersRouter);
+app.use("/api/tickets", actionsTakenRouter);
+app.use("/api/dashboard", dashboardRouter);
 
 // ---------------------------------------------------------------------------
 // GET /api/it/tickets
@@ -110,6 +118,15 @@ app.get(
       ) {
         where.itPriority = itPriority;
       }
+
+      // Lab 4: dashboard drill-down filter for Ticket ownership.
+      if (req.query.owner === "unassigned") {
+        where.ownerId = null;
+      } else if (req.query.owner === "me") {
+        where.ownerId = req.session.userId;
+      }
+
+      applyDrillDownFilters(where, req.query);
 
       const skip = (page - 1) * pageSize;
 
@@ -338,34 +355,26 @@ app.get(
 app.patch(
   "/api/tickets/:ticketId/status",
   requireRole(Role.IT_STAFF, Role.ADMIN),
-  async (
-    req: Request,
-    res: Response,
-  ) => {
+  async (req: Request, res: Response) => {
     try {
       const ticketId = Number(req.params.ticketId);
 
-      if (
-        !Number.isInteger(ticketId) ||
-        ticketId < 1
-      ) {
+      if (!Number.isInteger(ticketId) || ticketId < 1) {
         return res.status(404).json({
           error: "TICKET_NOT_FOUND",
           message: "Ticket not found.",
         });
       }
 
-      const ticket =
-        await getPrisma().ticket.findUnique({
-          where: {
-            id: ticketId,
-          },
+      const prisma = getPrisma();
 
-          select: {
-            id: true,
-            currentStatus: true,
-          },
-        });
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        select: {
+          id: true,
+          currentStatus: true,
+        },
+      });
 
       if (!ticket) {
         return res.status(404).json({
@@ -374,9 +383,9 @@ app.patch(
         });
       }
 
-      const requestedStatus = req.body.status as CurrentStatus;
+      const requestedStatus = req.body?.status as CurrentStatus;
 
-      const validStatuses = [
+      const validStatuses: string[] = [
         "NEW",
         "OPEN",
         "IN_PROGRESS",
@@ -397,86 +406,137 @@ app.patch(
         });
       }
 
-      // Status transition matrix for IT Staff/Admin.
       const allowedTransitions: Record<
-        string,
-        string[]
+        CurrentStatus,
+        CurrentStatus[]
       > = {
-        NEW: [
-          "OPEN",
-          "CANCELLED",
-        ],
-
+        NEW: ["OPEN", "CANCELLED"],
         OPEN: [
           "IN_PROGRESS",
+          "WAITING_FOR_REQUESTER",
           "CANCELLED",
         ],
-
         IN_PROGRESS: [
           "WAITING_FOR_REQUESTER",
           "RESOLVED",
           "CANCELLED",
         ],
-
         WAITING_FOR_REQUESTER: [
           "IN_PROGRESS",
+          "RESOLVED",
           "CANCELLED",
         ],
-
-        RESOLVED: [
-          "CLOSED",
-          "REOPENED",
-        ],
-
-        CLOSED: [
-          "REOPENED",
-        ],
-
+        RESOLVED: ["CLOSED", "REOPENED"],
+        CLOSED: ["REOPENED"],
         REOPENED: [
-          "OPEN",
           "IN_PROGRESS",
+          "WAITING_FOR_REQUESTER",
+          "RESOLVED",
           "CANCELLED",
         ],
-
         CANCELLED: [],
       };
 
-      const currentStatus =
-        ticket.currentStatus;
+      const currentStatus = ticket.currentStatus;
+
+      // Lab 4: stale-update check. The client sends the status it displayed;
+      // if the Ticket has changed since then, reject instead of applying a
+      // transition the user did not see. Optional for older clients.
+      const expectedStatus = req.body?.expectedStatus;
 
       if (
-        currentStatus === requestedStatus ||
-        !allowedTransitions[currentStatus]?.includes(
-          requestedStatus,
-        )
+        expectedStatus !== undefined &&
+        expectedStatus !== currentStatus
       ) {
-        return res.status(422).json({
-          error: "INVALID_STATUS_TRANSITION",
-          message: `Cannot change ticket status from ${currentStatus} to ${requestedStatus}.`,
+        return res.status(409).json({
+          error: "STALE_UPDATE",
+          message:
+            "The Ticket status changed after it was loaded. Refresh and try again.",
         });
       }
 
-      const updatedTicket =
-        await getPrisma().ticket.update({
+      if (
+        currentStatus === requestedStatus ||
+        !allowedTransitions[currentStatus].includes(requestedStatus)
+      ) {
+        return res.status(409).json({
+          error: "INVALID_STATUS_TRANSITION",
+          message:
+            "The requested Ticket status transition is not allowed.",
+        });
+      }
+
+      // Lab 4: Resolution Gate.
+      if (requestedStatus === "RESOLVED") {
+        const latestAction = await prisma.actionTaken.findFirst({
           where: {
-            id: ticketId,
+            ticketId,
           },
-
-          data: {
-            currentStatus: requestedStatus,
-          },
-
+          orderBy: [
+            { actionDateTime: "desc" },
+            { id: "desc" },
+          ],
           select: {
-            id: true,
-            ticketNumber: true,
-            currentStatus: true,
-            updatedAt: true,
+            actionDescription: true,
+            result: true,
+            followUpRequired: true,
+            followUpNote: true,
           },
         });
 
-      return res.status(200).json(
-        updatedTicket,
-      );
+        const resolutionAllowed =
+          latestAction !== null &&
+          latestAction.actionDescription.trim().length > 0 &&
+          latestAction.result.trim().length > 0 &&
+          (
+            !latestAction.followUpRequired ||
+            (
+              typeof latestAction.followUpNote === "string" &&
+              latestAction.followUpNote.trim().length > 0
+            )
+          );
+
+        if (!resolutionAllowed) {
+          return res.status(409).json({
+            error: "RESOLUTION_NOT_ALLOWED",
+            message:
+              "The Ticket does not satisfy the required resolution conditions.",
+          });
+        }
+      }
+
+      // Compare-and-set: only update if the status is still unchanged.
+      const updated = await prisma.ticket.updateMany({
+        where: {
+          id: ticketId,
+          currentStatus,
+        },
+        data: {
+          currentStatus: requestedStatus,
+        },
+      });
+
+      if (updated.count !== 1) {
+        return res.status(409).json({
+          error: "STALE_UPDATE",
+          message:
+            "The Ticket status changed after it was loaded. Refresh and try again.",
+        });
+      }
+
+      const updatedTicket = await prisma.ticket.findUnique({
+        where: {
+          id: ticketId,
+        },
+        select: {
+          id: true,
+          ticketNumber: true,
+          currentStatus: true,
+          updatedAt: true,
+        },
+      });
+
+      return res.status(200).json(updatedTicket);
     } catch (error) {
       console.error(
         "PATCH /api/tickets/:ticketId/status failed:",
@@ -490,6 +550,7 @@ app.patch(
     }
   },
 );
+
 
 // ---------------------------------------------------------------------------
 // PATCH /api/tickets/:ticketId/it-priority
@@ -1269,27 +1330,13 @@ app.post(
       const MAX_RETRIES = 3;
       const now = new Date();
 
-      const startOfYear =
-        new Date(
-          now.getFullYear(),
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-        );
-
-      const startOfNextYear =
-        new Date(
-          now.getFullYear() + 1,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-        );
+      // Lab 4 fix: the next sequence is based on the highest existing
+      // TKT-YYYY-NNNNNN number for this year, not on the Ticket count.
+      // Counting broke after Tickets were deleted (for example by tests),
+      // because the count could fall below numbers already in use.
+      // Seed-only numbers (9xxxxx) are excluded from the sequence.
+      const ticketNumberPattern =
+        `^TKT-${now.getFullYear()}-[0-8][0-9]{5}$`;
 
       for (
         let attempt = 0;
@@ -1297,19 +1344,19 @@ app.post(
         attempt++
       ) {
         try {
-          const ticketCount =
-            await prisma.ticket.count({
-              where: {
-                createdAt: {
-                  gte: startOfYear,
-                  lt: startOfNextYear,
-                },
-              },
-            });
+          const [latest] =
+            await prisma.$queryRaw<
+              { maxSequence: number | null }[]
+            >`
+              SELECT MAX(CAST(RIGHT("ticketNumber", 6) AS INTEGER))
+                AS "maxSequence"
+              FROM "Ticket"
+              WHERE "ticketNumber" ~ ${ticketNumberPattern}
+            `;
 
           const ticketNumber =
             generateTicketNumber(
-              ticketCount + 1,
+              (latest?.maxSequence ?? 0) + 1,
               now,
             );
 
@@ -1559,11 +1606,27 @@ app.get(
             req.query.currentStatus,
           );
 
-        if (status === "NEW") {
+        // Lab 4: all Ticket statuses can be filtered (Lab 2 allowed only
+        // NEW), so dashboard cards can drill down to My Tickets.
+        if (
+          [
+            "NEW",
+            "OPEN",
+            "IN_PROGRESS",
+            "WAITING_FOR_REQUESTER",
+            "RESOLVED",
+            "CLOSED",
+            "REOPENED",
+            "CANCELLED",
+          ].includes(status)
+        ) {
           where.currentStatus =
             status;
         }
       }
+
+      // Lab 4: dashboard drill-down filters.
+      applyDrillDownFilters(where, req.query);
 
       const allowedSortFields = [
         "createdAt",
@@ -1963,6 +2026,7 @@ app.get(
             },
 
             select: {
+              id: true,
               ticketNumber: true,
               requesterId: true,
               categoryId: true,
@@ -1973,7 +2037,6 @@ app.get(
               currentStatus: true,
               createdAt: true,
               updatedAt: true,
-
               requester: {
                 select: {
                   id: true,
@@ -2025,6 +2088,7 @@ app.get(
       }
 
       return res.status(200).json({
+        id: ticket.id,
         ticketNumber:
           ticket.ticketNumber,
 

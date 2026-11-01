@@ -5,6 +5,8 @@ import {
   getItTicketDetail,
   type ItTicketDetail,
 } from "../api.js";
+import ActionsTaken from "./ActionsTaken.js";
+import TicketWorkflow from "./TicketWorkflow.js";
 
 interface StaffTicketDetailProps {
   ticketId: number;
@@ -446,6 +448,12 @@ export default function StaffTicketDetail({
             </div>
           </div>
 
+          {/* Lab 4 - Actions Taken */}
+          <ActionsTaken
+            ticketId={ticket.id}
+            canEdit={true}
+           />
+
           <div className="zen-card shadow-sm">
             <div className="card-body p-4">
               <h2 className="h5 mb-3">
@@ -496,6 +504,24 @@ export default function StaffTicketDetail({
         </div>
 
         <div className="col-12 col-lg-4">
+          {/* Lab 4 - Ticket Workflow */}
+          <TicketWorkflow
+            ticketId={ticket.id}
+            currentStatus={ticket.currentStatus}
+            onStatusChanged={(result) =>
+              setTicket((currentTicket) =>
+                currentTicket
+                  ? {
+                      ...currentTicket,
+                      currentStatus: result.currentStatus,
+                      updatedAt: result.updatedAt,
+                    }
+                  : currentTicket,
+              )
+            }
+            onRefreshRequested={() => void loadTicket()}
+          />
+
           <div className="zen-card shadow-sm">
             <div className="card-body p-4">
               <h2 className="h5 mb-3">

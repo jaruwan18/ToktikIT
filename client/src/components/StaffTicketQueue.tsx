@@ -4,7 +4,9 @@ import {
   type ItPriority,
   type ItTicketListItem,
   type CurrentStatus,
+  type DrillDownFilter,
 } from "../api.js";
+import { describeDrillDown } from "./DashboardParts.js";
 
 type SortField =
   | "ticketNumber"
@@ -43,8 +45,15 @@ const PRIORITY_OPTIONS: Array<{
   { value: "HIGH", label: "High" },
 ];
 
+export interface QueueDrillDown {
+  filter: DrillDownFilter;
+  label: string;
+}
+
 interface StaffTicketQueueProps {
   onOpenTicket: (ticketId: number) => void;
+  // Lab 4: filters applied when the queue is opened from a dashboard card.
+  drillDown?: QueueDrillDown | null;
 }
 
 function getStatusLabel(status: CurrentStatus): string {
@@ -124,14 +133,22 @@ function compareValues(
 
 export default function StaffTicketQueue({
   onOpenTicket,
+  drillDown = null,
 }: StaffTicketQueueProps) {
   const [tickets, setTickets] = useState<ItTicketListItem[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] =
-      useState<CurrentStatus | "">("");
+      useState<CurrentStatus | "">(
+        drillDown?.filter.currentStatus ?? "",
+      );
 
     const [priorityFilter, setPriorityFilter] =
-      useState<ItPriority | "">("");
+      useState<ItPriority | "">(drillDown?.filter.itPriority ?? "");
+
+  // Dashboard-only filters (owner, status group, recent window) that have
+  // no control of their own. They stay until the user clears them.
+  const [dashboardFilter, setDashboardFilter] =
+    useState<QueueDrillDown | null>(drillDown);
  
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -158,6 +175,10 @@ export default function StaffTicketQueue({
           statusFilter || undefined,
         itPriority:
           priorityFilter || undefined,
+        owner: dashboardFilter?.filter.owner,
+        statusGroup: dashboardFilter?.filter.statusGroup,
+        updatedWithinDays:
+          dashboardFilter?.filter.updatedWithinDays,
         page,
         pageSize,
       });
@@ -186,6 +207,7 @@ export default function StaffTicketQueue({
     search,
     statusFilter,
     priorityFilter,
+    dashboardFilter,
     page,
   ]);
 
@@ -208,6 +230,7 @@ export default function StaffTicketQueue({
     setSearch("");
     setStatusFilter("");
     setPriorityFilter("");
+    setDashboardFilter(null);
     setPage(1);
   }
 
@@ -311,7 +334,8 @@ export default function StaffTicketQueue({
   const hasFilters =
     search.trim() !== "" ||
     statusFilter !== "" ||
-    priorityFilter !== "";
+    priorityFilter !== "" ||
+    dashboardFilter !== null;
 
   return (
     <section>
@@ -325,6 +349,24 @@ export default function StaffTicketQueue({
           IT Service Desk.
         </p>
       </div>
+
+      {dashboardFilter ? (
+        <div className="drilldown-banner" role="status">
+          <span>
+            <strong>From dashboard: {dashboardFilter.label}</strong>
+            <span className="d-block small text-muted">
+              {describeDrillDown(dashboardFilter.filter)}
+            </span>
+          </span>
+          <button
+            type="button"
+            className="btn btn-outline-success btn-sm"
+            onClick={clearFilters}
+          >
+            Show all Tickets
+          </button>
+        </div>
+      ) : null}
 
       <section className="filter-panel mb-4">
         <div className="row g-3">
