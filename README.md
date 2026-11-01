@@ -112,7 +112,7 @@ Each Lab 4 E2E test creates its own Ticket through the API, so the suite can be 
 ## Demonstration guide (Lab 4)
 
 1. **Actions Taken:** log in as `it.alex@example.com`, open **IT Ticket Queue**, open a Ticket and use **Add Action Taken**. Try **Follow-Up Required?** without a note to see the validation message. Then log in as the Ticket's Requester: the Actions Taken list is visible but read-only.
-2. **Ticket workflow:** on IT Staff Ticket Detail, **Change Status To** lists only the permitted next statuses. Choosing **Resolved** is rejected until the latest Action Taken has a description and a result.
+2. **Ticket workflow:** on IT Staff Ticket Detail, **Change Status To** lists only the permitted next statuses. Choosing **Resolved** is rejected until the latest Action Taken has a description, a result, and a follow-up note when follow-up is required.
 3. **IT Staff Dashboard:** choose **Dashboard** as `it.alex@example.com`. Each metric card opens the IT Ticket Queue filtered to the same Tickets, with a "From dashboard" banner.
 4. **Requester Dashboard:** choose **Dashboard** as `jennifer.anderson@example.com`. The cards count only that Requester's Tickets and open My Tickets with the same filter.
 
