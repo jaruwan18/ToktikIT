@@ -191,10 +191,14 @@ For PRs #71, #73, #75 and #77 the reviewer approved the first commit and listed 
 > 4. ตรวจสอบภาพหน้าจอ Desktop, Tablet และ Mobile ว่าอ่านได้ชัดเจน ครอบคลุม Dashboard และ Actions Taken รวมถึง Loading, Empty, Error และ Forbidden States
 > 5. ตรวจสอบ README.md ว่าคำสั่ง Setup, Migration, Seed, Test และขั้นตอน Demonstration สอดคล้องกับสถานะปัจจุบันของระบบ และสามารถทำตามได้จริง
 
-**My response** (comment on PR #79), summarised:
+**My response** ([comment](https://github.com/jaruwan18/ToktikIT/pull/79#issuecomment-6554623021)):
 
-1. Every PR link, review link and response link was checked against GitHub. Response links were added for #62-#69.
-2. All 10 PRs (#62-#79) have a formal **Approved** review from @Film26.
-3. ai-use.md names both LLMs and has 6 key prompts, each with the result and how it was verified, plus My Reflection.
-4. **Added:** Actions Taken empty and load-failure screenshots at all three sizes. Loading, empty, error and forbidden states are now covered for the dashboards and Actions Taken.
-5. README was followed step by step on a fresh clone and a new database: migrate, seed (run twice), server 184/184, client 105/105, build and E2E 12/12 all passed. The demo step for Resolved now mentions the follow-up note.
+> ขอบคุณสำหรับการรีวิวค่ะ ตรวจครบ 5 ข้อแล้ว และเพิ่ม commit แก้ไข 1 commit
+>
+> 1. **reviewer.md:** เทียบลิงก์ PR, ลิงก์รีวิว และคอมเมนต์ตอบกลับทุกอันกับ GitHub แล้ว ตรงกันทั้งหมด เพิ่มลิงก์ไปยังคอมเมนต์ตอบกลับของ #62–#69 และระบุว่าวันที่เป็นเวลา UTC
+> 2. **Formal Approval:** ทุก PR ตั้งแต่ #62 ถึง #79 ได้สถานะ **Approved** จาก @Film26 และในตารางของ reviewer.md ลิงก์ไปที่ review นั้นโดยตรง
+> 3. **ai-use.md:** ระบุ LLM 2 ตัว (Claude และ ChatGPT) มี Key Prompts 6 ข้อ แต่ละข้อบอกผลลัพธ์และวิธีตรวจสอบ และมี My Reflection ครบ
+> 4. **ภาพหน้าจอ (แก้เพิ่ม):** เพิ่มภาพ Actions Taken ตอนไม่มีข้อมูล (Empty) และตอนโหลดไม่สำเร็จ (Error) ครบทั้ง 3 ขนาดจอ ตอนนี้ Dashboard และ Actions Taken มีภาพสถานะ Loading, Empty, Error และ Forbidden ครบ
+> 5. **README:** ลองทำตามทีละขั้นบน clone ใหม่และฐานข้อมูลใหม่ ทั้ง migrate, seed (รัน 2 รอบ), server 184/184, client 105/105, build และ E2E 12/12 ผ่านทั้งหมด แก้ขั้นตอน demo เรื่อง Resolved ให้รวมเงื่อนไข follow-up note ด้วย
+
+**Outcome:** The follow-up commit (`661838b`) was pushed after PR #79 had been merged, so it was merged into `lab4-staging` through a separate follow-up PR.
