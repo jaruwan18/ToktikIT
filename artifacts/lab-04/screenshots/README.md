@@ -1,6 +1,6 @@
 # Lab 4 Screenshots
 
-Captured on 31 Oct 2026 with Playwright (Chromium) against the running app and the seeded database (`npx prisma db seed`).
+Captured on 31 Oct 2026 (the `05` and `06` Actions Taken images on 1 Nov 2026) with Playwright (Chromium) against the running app and the seeded database (`npx prisma db seed`).
 
 | Viewport | Size |
 | --- | --- |
@@ -36,5 +36,7 @@ Each folder has the same screens at all three viewports (`desktop-`, `tablet-`, 
 | `*-02-create-validation.png` | Add Action Taken form with validation messages |
 | `*-03-edit.png` | Edit mode for an existing Action Taken |
 | `*-04-requester-read-only.png` | The Requester's Ticket Detail: Actions Taken visible, no Add or Edit controls |
+| `*-05-empty.png` | Ticket TKT-2026-000003 with no Actions Taken: "No Actions Taken yet." |
+| `*-06-load-failure.png` | Safe failure when Actions Taken cannot load, with Retry (API forced to return 500) |
 
 The loading, failure, empty and forbidden screens use Playwright request interception, so each state can be shown on demand. The same states are covered by the UI tests in `client/tests/lab-04/`.

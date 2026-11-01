@@ -1315,3 +1315,35 @@ docs/lab-04/specification.md
 docs/lab-04/ui-spec.md
 docs/lab-04/api-spec.md
 ```
+
+---
+
+# 23. Final Test Status
+
+Final run on 31 Oct 2026 with the seeded database. Commands are listed in `README.md`.
+
+| Suite | Command | Result |
+| --- | --- | --- |
+| Server unit + API/integration (Lab 1–4) | `cd server && npm test` | 21 files, 184 tests passed |
+| Client UI component (Lab 1–4) | `cd client && npm test` | 14 files, 105 tests passed |
+| End-to-end (Lab 2–4) | `cd client && npx playwright test` | 12 tests passed |
+
+## 23.1 Lab 4 Test Files and Coverage
+
+| Test file | Tests | Acceptance Criteria | Status |
+| --- | --- | --- | --- |
+| `server/tests/lab-04/actions-taken.api.test.ts` | 11 | AC-01, AC-03, AC-04, AC-05, AC-10, AC-11 | Pass |
+| `server/tests/lab-04/ticket-workflow.api.test.ts` | 31 | AC-06, AC-07, AC-10, AC-11 | Pass |
+| `server/tests/lab-04/requester-dashboard.api.test.ts` | 8 | AC-02, AC-08, AC-09, AC-10 | Pass |
+| `server/tests/lab-04/staff-dashboard.api.test.ts` | 13 | AC-08, AC-09, AC-10 | Pass |
+| `server/tests/lab-04/ticket-number-sequence.api.test.ts` | 1 | AC-12 | Pass |
+| `client/tests/lab-04/ActionsTaken.test.tsx` | 8 | AC-01, AC-03, AC-05 | Pass |
+| `client/tests/lab-04/TicketWorkflow.test.tsx` | 10 | AC-06, AC-07, AC-11 | Pass |
+| `client/tests/lab-04/StaffDashboard.test.tsx` | 12 | AC-08, AC-09, AC-13, AC-14 | Pass |
+| `client/tests/lab-04/RequesterDashboard.test.tsx` | 10 | AC-02, AC-08, AC-09 | Pass |
+| `client/tests/lab-04/RequesterSessionRequests.test.tsx` | 5 | AC-12 | Pass |
+| `e2e/lab-04/actions-taken-flow.spec.ts` | 1 | AC-01, AC-03, AC-05 | Pass |
+| `e2e/lab-04/ticket-resolution.spec.ts` | 2 | AC-06, AC-07 | Pass |
+| `e2e/lab-04/dashboards.spec.ts` | 4 | AC-02, AC-09, AC-10, AC-13 | Pass |
+
+Regression (AC-12): all Lab 1–3 server and client tests and the Lab 2–3 E2E tests are part of the runs above and pass.

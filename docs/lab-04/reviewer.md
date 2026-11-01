@@ -3,11 +3,13 @@
 **Author:** Jaruwan — GitHub: [@jaruwan18](https://github.com/jaruwan18)
 **Peer reviewer:** Film — GitHub: [@Film26](https://github.com/Film26)
 
-Every Lab 4 feature branch was merged into `lab4-staging` through a pull request that the peer reviewer approved on GitHub. Reviewer comments are quoted exactly as written. Responses for PRs #62-#69 are quoted exactly; responses for PRs #71-#77 are summarised, with a link to the full comment.
+Every Lab 4 feature branch was merged into `lab4-staging` through a pull request that the peer reviewer approved on GitHub. Reviewer comments are quoted exactly as written. Responses for PRs #62-#69 are quoted exactly; responses for PRs #71-#77 are summarised. Every response links to the original comment on GitHub. Dates are in UTC, as GitHub stores them.
+
+For PRs #71, #73, #75 and #77 the reviewer approved the first commit and listed points to check before merging. I answered each point in a PR comment and pushed the follow-up commits named in the response before merging.
 
 ## Summary
 
-| PR | Branch | Review | Merged into `lab4-staging` | Changes made after review |
+| PR | Branch | Review | Merged into `lab4-staging` (UTC) | Changes made after review |
 | --- | --- | --- | --- | --- |
 | [#62](https://github.com/jaruwan18/ToktikIT/pull/62) | `feature/lab4-engineering-contract` | [Approved](https://github.com/jaruwan18/ToktikIT/pull/62#pullrequestreview-5445474731) by @Film26 | 2026-10-07 | Specification clarified |
 | [#64](https://github.com/jaruwan18/ToktikIT/pull/64) | `feature/lab4-actions-foundation` | [Approved](https://github.com/jaruwan18/ToktikIT/pull/64#pullrequestreview-5449678547) by @Film26 | 2026-10-08 | None needed |
@@ -29,7 +31,7 @@ Every Lab 4 feature branch was merged into `lab4-staging` through a pull request
 > มีจุดที่อยากให้ตรวจสอบเพิ่มเติม คือควรระบุเงื่อนไขในการเปลี่ยนสถานะ Ticket เป็น Resolved ให้ชัดเจน เพื่อให้สามารถนำไปบังคับใช้และเขียน Test ได้ตรงตาม Specification
 > โดยรวม Specification มีความสอดคล้องกับข้อกำหนดของ Lab 4 และสามารถดำเนินการต่อได้เลยฮะ
 
-**My response:**
+**My response** ([comment](https://github.com/jaruwan18/ToktikIT/pull/62#issuecomment-6045204680)):
 
 > ขอบคุณสำหรับรีวิวค่ะ ได้เพิ่มรายละเอียดเงื่อนไขการเปลี่ยนสถานะเป็น Resolved ใน Specification แล้ว โดยระบุเงื่อนไขที่ backend ต้องตรวจสอบให้ชัดเจน เพื่อให้ตอน implement และเขียน Test ใช้เงื่อนไขเดียวกันได้ค่ะ
 
@@ -41,7 +43,7 @@ Every Lab 4 feature branch was merged into `lab4-staging` through a pull request
 
 > ตรวจสอบผลการทดสอบแล้ว Actions Taken API ผ่าน 11/11 และ Lab 3 Regression ผ่าน 70/70 ซึ่งครอบคลุมส่วนที่เกี่ยวข้องกับการเปลี่ยนแปลงใน PR นี้โดยรวมการ Implement ตรงตามขอบเขตของงานและสามารถดำเนินการต่อในส่วนถัดไปได้
 
-**My response:**
+**My response** ([comment](https://github.com/jaruwan18/ToktikIT/pull/64#issuecomment-6065713171)):
 
 > ขอบคุณสำหรับรีวิวค่ะ และขอบคุณที่ช่วยตรวจสอบผลการทดสอบให้ด้วย เดี๋ยวจะดำเนินการในส่วนถัดไปตามแผนต่อค่ะ
 
@@ -55,7 +57,7 @@ Every Lab 4 feature branch was merged into `lab4-staging` through a pull request
 > ขอให้ตรวจสอบเพิ่มเติมว่าฟอร์มมีการ Validate ฟิลด์ที่จำเป็น โดยเฉพาะ Follow-up Note เมื่อเลือก Follow-Up Required และการแสดงผลเมื่อเกิดข้อผิดพลาดหรือมีการแก้ไขข้อมูลพร้อมกัน
 > โดยรวมการเปลี่ยนแปลงตรงตามขอบเขตของ PR และสามารถดำเนินการต่อได้ค่ะ
 
-**My response:**
+**My response** ([comment](https://github.com/jaruwan18/ToktikIT/pull/66#issuecomment-6083602748)):
 
 > ขอบคุณสำหรับรีวิวค่ะ ได้ตรวจสอบเพิ่มเติมในส่วนของฟอร์มและการจัดการข้อผิดพลาดแล้ว โดยมีการ Validate ฟิลด์ที่จำเป็น รวมถึง Follow-up Note เมื่อเลือก Follow-Up Required และมีชุดทดสอบสำหรับกรณีดังกล่าวแล้วค่ะ
 >
@@ -71,7 +73,7 @@ Every Lab 4 feature branch was merged into `lab4-staging` through a pull request
 
 > ผลการทดสอบ Server ผ่าน 131 tests จาก 17 test files และ Client Tests กับ Build ผ่านแล้ว นอกจากนี้ยังมีการตรวจสอบการทำงานของ Actions Taken สำหรับ Requester และ IT Staff ด้วยโดยรวมการแก้ไขครอบคลุมปัญหาที่ระบุไว้ และสามารถดำเนินการต่อได้ฮะ
 
-**My response:**
+**My response** ([comment](https://github.com/jaruwan18/ToktikIT/pull/67#issuecomment-6099104223)):
 
 > ขอบคุณสำหรับการรีวิวค่ะ ผลการทดสอบทั้งฝั่ง Server และ Client ผ่าน รวมถึงการตรวจสอบการทำงานของ Actions Taken สำหรับ Requester และ IT Staff ด้วยค่ะ จะดำเนินการตามขั้นตอนถัดไปของ Lab 4 ต่อไปค่ะ
 
@@ -83,7 +85,7 @@ Every Lab 4 feature branch was merged into `lab4-staging` through a pull request
 
 > ขอให้ตรวจสอบ Status Transition Matrix อีกครั้ง โดยเฉพาะการเปลี่ยนสถานะจาก Open เป็น In Progress ว่ายังคงเป็นไปตาม Specification ของ Lab 4 หรือไม่ และตรวจสอบให้แน่ใจว่า Test ครอบคลุมทั้งกรณีที่สามารถและไม่สามารถเปลี่ยนเป็น Resolved ได้ โดยรวมแนวทางการแก้ไขสอดคล้องกับเป้าหมายของ Lab 4 แต่ควรยืนยันเงื่อนไขเหล่านี้ก่อน Merge นะ
 
-**My response:**
+**My response** ([comment](https://github.com/jaruwan18/ToktikIT/pull/69#issuecomment-6166018939)):
 
 > ได้เพิ่ม Test เพื่อตรวจสอบว่า API ปฏิเสธการเปลี่ยนสถานะจาก `OPEN` เป็น `IN_PROGRESS` ตาม Transition Matrix ของ Lab 4 และเพิ่ม Test เพื่อยืนยันว่า Resolution Gate ตรวจสอบ Action Taken รายการล่าสุด โดยต้องปฏิเสธการเปลี่ยนสถานะเป็น `RESOLVED` หากรายการล่าสุดมีคำอธิบายที่ไม่ถูกต้อง แม้ว่ารายการก่อนหน้าจะมีข้อมูลถูกต้องก็ตาม
 >
@@ -178,3 +180,25 @@ Every Lab 4 feature branch was merged into `lab4-staging` through a pull request
 1. One E2E test calls the API directly (NEW to CLOSED) and gets 409 `INVALID_STATUS_TRANSITION`. The server tests also cover the full transition matrix.
 2. **Updated:** added an Acceptance Criteria column to tests.md §18.4 and E2E references to the §19 traceability table.
 3. The branch includes the #75 fix (`bfe7a2a`). All 12 E2E tests (Lab 2: 3, Lab 3: 2, Lab 4: 7) passed on two consecutive runs.
+
+## PR [#79](https://github.com/jaruwan18/ToktikIT/pull/79) — Lab 4 final documentation
+
+**Reviewer comment ([Approved](https://github.com/jaruwan18/ToktikIT/pull/79#pullrequestreview-5723894267)):**
+
+> 1. ตรวจสอบ docs/lab-04/reviewer.md ว่าลิงก์ PR ทั้งหมดถูกต้อง และความคิดเห็น การตอบกลับ รวมถึงการแก้ไขหลัง Peer Review ตรงกับข้อมูลจริงบน GitHub
+> 2. ตรวจสอบว่ามีหลักฐาน Formal Approval จากผู้รีวิวใน PR ที่เกี่ยวข้องครบถ้วน ไม่ใช่มีเพียง Comment หรือการตอบกลับ
+> 3. ตรวจสอบ docs/lab-04/ai-use.md ว่ามีการระบุ LLM, Key Prompts จำนวน 6–10 รายการ, ผลลัพธ์ วิธีตรวจสอบ และ My Reflection ครบตามข้อกำหนด
+> 4. ตรวจสอบภาพหน้าจอ Desktop, Tablet และ Mobile ว่าอ่านได้ชัดเจน ครอบคลุม Dashboard และ Actions Taken รวมถึง Loading, Empty, Error และ Forbidden States
+> 5. ตรวจสอบ README.md ว่าคำสั่ง Setup, Migration, Seed, Test และขั้นตอน Demonstration สอดคล้องกับสถานะปัจจุบันของระบบ และสามารถทำตามได้จริง
+
+**My response** ([comment](https://github.com/jaruwan18/ToktikIT/pull/79#issuecomment-6554623021)):
+
+> ขอบคุณสำหรับการรีวิวค่ะ ตรวจครบ 5 ข้อแล้ว และเพิ่ม commit แก้ไข 1 commit
+>
+> 1. **reviewer.md:** เทียบลิงก์ PR, ลิงก์รีวิว และคอมเมนต์ตอบกลับทุกอันกับ GitHub แล้ว ตรงกันทั้งหมด เพิ่มลิงก์ไปยังคอมเมนต์ตอบกลับของ #62–#69 และระบุว่าวันที่เป็นเวลา UTC
+> 2. **Formal Approval:** ทุก PR ตั้งแต่ #62 ถึง #79 ได้สถานะ **Approved** จาก @Film26 และในตารางของ reviewer.md ลิงก์ไปที่ review นั้นโดยตรง
+> 3. **ai-use.md:** ระบุ LLM 2 ตัว (Claude และ ChatGPT) มี Key Prompts 6 ข้อ แต่ละข้อบอกผลลัพธ์และวิธีตรวจสอบ และมี My Reflection ครบ
+> 4. **ภาพหน้าจอ (แก้เพิ่ม):** เพิ่มภาพ Actions Taken ตอนไม่มีข้อมูล (Empty) และตอนโหลดไม่สำเร็จ (Error) ครบทั้ง 3 ขนาดจอ ตอนนี้ Dashboard และ Actions Taken มีภาพสถานะ Loading, Empty, Error และ Forbidden ครบ
+> 5. **README:** ลองทำตามทีละขั้นบน clone ใหม่และฐานข้อมูลใหม่ ทั้ง migrate, seed (รัน 2 รอบ), server 184/184, client 105/105, build และ E2E 12/12 ผ่านทั้งหมด แก้ขั้นตอน demo เรื่อง Resolved ให้รวมเงื่อนไข follow-up note ด้วย
+
+**Outcome:** The follow-up commit (`661838b`) was pushed after PR #79 had been merged, so it was merged into `lab4-staging` through a separate follow-up PR.
